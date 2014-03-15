@@ -1,0 +1,4 @@
+Todo
+
+Done
++ Create from A => Option[B]
