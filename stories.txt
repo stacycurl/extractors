@@ -1,5 +1,6 @@
 Todo
 
 Done
++ Can map over result
 + Create from PartialFunction[A, B]
 + Create from A => Option[B]
