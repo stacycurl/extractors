@@ -1,14 +1,21 @@
 package stacycurl.scala.extractors
 
 import scalaz._
+import scalaz.syntax.std.boolean._
 
 
 object Extractor extends ExtractorInstances {
-  def from[A] = new ExtractorBuilder[A]
+  def from[A] = new FromCapturer[A]
+  def map[A]  = new MapCapturer[A]
+  def when[A](f: A => Boolean): Extractor[A, A] = Function[A, A]((a: A) => f(a).option(a))
 
-  class ExtractorBuilder[A] {
+  class FromCapturer[A] {
     def apply[B](f: A => Option[B]): Extractor[A, B] = Function[A, B](f)
     def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = apply(pf.lift)
+  }
+
+  class MapCapturer[A] {
+    def apply[B](f: A => B): Extractor[A, B] = Function[A, B]((a: A) => Option(f(a)))
   }
 
   private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
@@ -34,6 +41,7 @@ trait Extractor[A, B] {
   def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
   def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contravariant[A, B, C](this, f)
   def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
+  def andThen[C](ebc: Extractor[B, C]): Extractor[A, C] = ebc.compose(this)
 }
 
 trait ExtractorInstances {

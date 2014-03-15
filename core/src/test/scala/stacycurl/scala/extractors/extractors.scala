@@ -50,8 +50,8 @@ class ExtractorsTests {
   }
 
   @Test def canCompose {
-    val Length: Extractor[String, Int] = Extractor.from[String](s => Option(s.length))
-    val IsThree: Extractor[Int, Int] = Extractor.from[Int](i => (i == 3).option(i))
+    val Length: Extractor[String, Int] = Extractor.map(_.length)
+    val IsThree: Extractor[Int, Int] = Extractor.when[Int](_ == 3)
     val LengthThree = IsThree.compose(Length)
 
     assertEquals(List(true, true, false), List("foo", "bar", "other").map {
@@ -60,5 +60,16 @@ class ExtractorsTests {
     })
   }
 
-  private def contains(s: String) = Extractor.from[String](t => t.contains(s).option(t))
+  @Test def canComposeWithAndThen {
+    val Length  = Extractor.map[String](_.length)
+    val IsThree = Extractor.when[Int](_ == 3)
+    val LengthThree = Length.andThen(IsThree)
+
+    assertEquals(List(true, true, false), List("foo", "bar", "other").map {
+      case LengthThree(_) => true
+      case _              => false
+    })
+  }
+
+  private def contains(s: String) = Extractor.when[String](_.contains(s))
 }
