@@ -6,6 +6,7 @@ object Extractor {
 
   class ExtractorBuilder[A] {
     def apply[B](f: A => Option[B]): Extractor[A, B] = FunctionExtractor[A, B](f)
+    def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = apply(pf.lift)
   }
 
   private case class FunctionExtractor[A, B](f: A => Option[B]) extends Extractor[A, B] {

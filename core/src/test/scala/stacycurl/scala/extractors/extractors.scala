@@ -10,16 +10,20 @@ class ExtractorsTests {
   @Test def canCreateFromFunction {
     val ContainsFoo = Extractor.from[String](s => s.contains("foo").option(s))
 
-    val foo = PartialFunction.condOpt("foo") {
+    assertEquals(List("foo", "food", "unmatched"), List("foo", "food", "other").map {
       case ContainsFoo(s) => s
+      case _ => "unmatched"
+    })
+  }
+
+  @Test def canCreateFromPartialFunction {
+    val ContainsBar = Extractor.from[String].pf {
+      case s if s.contains("bar") => s
     }
 
-    assertEquals(Some("foo"), foo)
-
-    val food = PartialFunction.condOpt("food") {
-      case ContainsFoo(s) => s
-    }
-
-    assertEquals(Some("food"), food)
+    assertEquals(List("bar", "bard", "unmatched"), List("bar", "bard", "other").map {
+      case ContainsBar(s) => s
+      case _ => "unmatched"
+    })
   }
 }

@@ -1,4 +1,5 @@
 Todo
 
 Done
++ Create from PartialFunction[A, B]
 + Create from A => Option[B]
