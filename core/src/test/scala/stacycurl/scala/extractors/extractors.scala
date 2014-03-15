@@ -1,6 +1,7 @@
 package stacycurl.scala.extractors
 
 import org.junit.Test
+import scala.util._
 
 import org.junit.Assert._
 import scalaz.syntax.std.boolean._
@@ -94,10 +95,25 @@ class ExtractorsTests {
   }
 
   @Test def canFallbackUsingGetOrElse {
-    val ToInt = Extractor.fromMap(Map("foo" -> 1, "bar" -> 2)).getOrElse(3)
+    val ToInt = Extractor.fromMap("foo" -> 1, "bar" -> 2).getOrElse(3)
 
     assertEquals(List(1, 2, 3), List("foo", "bar", "other").map {
       case ToInt(result) => result
     })
+  }
+
+  @Test def canChooseExceptionToFailWith {
+    case class Unknown(message: String) extends Exception(message)
+    val ToInt = Extractor.fromMap("foo" -> 1).orThrow(Unknown("unknown"))
+
+    assertEquals(List(Success(1), Failure(Unknown("unknown"))), List("foo", "other").map(item => {
+      Try(item match { case ToInt(i) => i })
+    }))
+
+    val ToDouble = Extractor.fromMap("foo" -> 1.0).orThrow((s: String) => Unknown("unknown: " + s))
+
+    assertEquals(List(Success(1.0), Failure(Unknown("unknown: other"))), List("foo", "other").map(item => {
+      Try(item match { case ToDouble(d) => d })
+    }))
   }
 }

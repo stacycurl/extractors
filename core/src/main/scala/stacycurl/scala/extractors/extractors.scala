@@ -6,6 +6,7 @@ import scalaz.syntax.std.boolean._
 
 object Extractor extends ExtractorInstances {
   def from[A] = new FromCapturer[A]
+  def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = fromMap[K, V](entries.toMap)
   def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = from[K](map.get)
   def map[A]  = new MapCapturer[A]
   def when[A](f: A => Boolean): Extractor[A, A] = from[A]((a: A) => f(a).option(a))
@@ -49,6 +50,10 @@ object Extractor extends ExtractorInstances {
     override def orElse(alternative: A => Option[B]): Extractor[A, B] = copy(alternatives :+ alternative)
   }
 
+  private case class OrThrow[A, B](ab: A => Option[B], exception: A => Exception) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
+  }
+
   private case class GetOrElse[A, B](ab: A => Option[B], alternative: B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
   }
@@ -64,6 +69,8 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def compose[C](eca: C => Option[A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
   def andThen[C](ebc: B => Option[C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
   def orElse(alternative: A => Option[B]): Extractor[A, B] = Extractor.OrElse[A, B](List(this, alternative))
+  def orThrow(exception: Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, _ => exception)
+  def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
 }
 

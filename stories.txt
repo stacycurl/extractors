@@ -1,6 +1,7 @@
 Todo
 
 Done
+* orThrow
 * getOrElse
 + Can compose with orElse
 + Is function: A => Option[B]
