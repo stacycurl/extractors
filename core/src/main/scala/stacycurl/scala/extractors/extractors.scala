@@ -81,6 +81,10 @@ object Extractor {
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = b
   }
+
+  private case class Zip[A, B, C, D](ab: A => Option[B], cd: C => Option[D]) extends Extractor[(A, C), (B, D)] {
+    def unapply(ac: (A, C)): Option[(B, D)] = for { b <- ab(ac._1); d <- cd(ac._2) } yield (b, d)
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -98,4 +102,5 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
   def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
+  def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
 }

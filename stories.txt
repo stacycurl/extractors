@@ -1,6 +1,7 @@
 Todo
 
 Done
+* zip
 * flatMap
 * filter
 * orThrow

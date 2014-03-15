@@ -125,4 +125,15 @@ class ExtractorsTests {
       case _              => "unknown"
     })
   }
+
+  @Test def canZip {
+    val ContainsFoo  = Extractor.string.contains("foo")
+    val GreaterThan3 = Extractor.when[Int](_ > 3)
+    val FooGT3 = ContainsFoo.zip(GreaterThan3)
+
+    assertEquals(List(true, false, false, false), List(("foo", 4), ("foo", 0), ("bar", 4), ("bar", 0)).map {
+      case FooGT3(_) => true
+      case _         => false
+    })
+  }
 }
