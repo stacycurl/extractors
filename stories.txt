@@ -1,6 +1,7 @@
 Todo
 
 Done
++ Can contramap over input
 + Can map over result
 + Create from PartialFunction[A, B]
 + Create from A => Option[B]
