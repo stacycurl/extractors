@@ -80,6 +80,15 @@ class ExtractorsTests {
     })
   }
 
+  @Test def canComposeWithAlternative {
+    val ContainsFooOrBar = Extractor.string.contains("foo").orElse(Extractor.string.contains("bar"))
+
+    assertEquals(List(true, true, true, false), List("foobar", "foo", "bar", "other").map {
+      case ContainsFooOrBar(_) => true
+      case _                   => false
+    })
+  }
+
   @Test def isFunction {
     assertEquals(List(Some("foo"), None), List("foo", "bar").map(Extractor.string.contains("foo")))
   }

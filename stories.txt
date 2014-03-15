@@ -1,6 +1,7 @@
 Todo
 
 Done
++ Can compose with orElse
 + Is function: A => Option[B]
 + Can create from Map
 + Can compose with 'andThen'
