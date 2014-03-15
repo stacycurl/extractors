@@ -1,6 +1,7 @@
 Todo
 
 Done
++ Can create from Map
 + Can compose with 'andThen'
 + Can compose
 + Can contramap over input

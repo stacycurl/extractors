@@ -6,8 +6,9 @@ import scalaz.syntax.std.boolean._
 
 object Extractor extends ExtractorInstances {
   def from[A] = new FromCapturer[A]
+  def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = from[K](map.get)
   def map[A]  = new MapCapturer[A]
-  def when[A](f: A => Boolean): Extractor[A, A] = Function[A, A]((a: A) => f(a).option(a))
+  def when[A](f: A => Boolean): Extractor[A, A] = from[A]((a: A) => f(a).option(a))
 
   object string {
     def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))
