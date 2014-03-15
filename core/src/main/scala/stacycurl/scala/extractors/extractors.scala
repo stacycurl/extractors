@@ -7,30 +7,33 @@ object Extractor extends ExtractorInstances {
   def from[A] = new ExtractorBuilder[A]
 
   class ExtractorBuilder[A] {
-    def apply[B](f: A => Option[B]): Extractor[A, B] = FunctionExtractor[A, B](f)
+    def apply[B](f: A => Option[B]): Extractor[A, B] = Function[A, B](f)
     def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = apply(pf.lift)
   }
 
-  private case class FunctionExtractor[A, B](f: A => Option[B]) extends Extractor[A, B] {
+  private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
   }
 
-  private case class MappedExtractor[A, B, C](from: Extractor[A, B], f: B => C) extends Extractor[A, C] {
+  private case class Mapped[A, B, C](from: Extractor[A, B], f: B => C) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = from.unapply(a).map(f)
   }
 
-  private case class ContravariantExtractor[A, B, C](from: Extractor[A, B], f: C => A) extends Extractor[C, B] {
+  private case class Contravariant[A, B, C](from: Extractor[A, B], f: C => A) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = from.unapply(f(c))
+  }
+
+  private case class Compose[A, B, C](eab: Extractor[A, B], eca: Extractor[C, A]) extends Extractor[C, B] {
+    def unapply(c: C): Option[B] = eca.unapply(c).flatMap(a => eab.unapply(a))
   }
 }
 
 trait Extractor[A, B] {
-  import Extractor._
-
   def unapply(a: A): Option[B]
 
-  def map[C](f: B => C): Extractor[A, C] = MappedExtractor[A, B, C](this, f)
-  def contramap[C](f: C => A): Extractor[C, B] = ContravariantExtractor[A, B, C](this, f)
+  def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
+  def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contravariant[A, B, C](this, f)
+  def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
 }
 
 trait ExtractorInstances {
