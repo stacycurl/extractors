@@ -57,6 +57,10 @@ object Extractor extends ExtractorInstances {
   private case class GetOrElse[A, B](ab: A => Option[B], alternative: B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
   }
+
+  private case class Filter[A, B](ab: A => Option[B], p: B => Boolean) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = ab(a).filter(p)
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -72,6 +76,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def orThrow(exception: Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, _ => exception)
   def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
+  def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
 }
 
 trait ExtractorInstances {

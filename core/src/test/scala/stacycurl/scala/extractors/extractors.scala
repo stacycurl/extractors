@@ -116,4 +116,13 @@ class ExtractorsTests {
       Try(item match { case ToDouble(d) => d })
     }))
   }
+
+  @Test def canFilterResult {
+    val ContainsFoo = Extractor.string.contains("foo").filter(_.length > 3)
+
+    assertEquals(List("unknown", "food", "unknown"), List("foo", "food", "other").map {
+      case ContainsFoo(f) => f
+      case _              => "unknown"
+    })
+  }
 }

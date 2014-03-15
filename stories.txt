@@ -1,6 +1,7 @@
 Todo
 
 Done
+* filter
 * orThrow
 * getOrElse
 + Can compose with orElse
