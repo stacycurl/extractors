@@ -1,6 +1,7 @@
 Todo
 
 Done
+* flatMap
 * filter
 * orThrow
 * getOrElse

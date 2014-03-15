@@ -4,7 +4,7 @@ import scalaz._
 import scalaz.syntax.std.boolean._
 
 
-object Extractor extends ExtractorInstances {
+object Extractor {
   def from[A] = new FromCapturer[A]
   def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = fromMap[K, V](entries.toMap)
   def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = from[K](map.get)
@@ -24,6 +24,18 @@ object Extractor extends ExtractorInstances {
     def apply[B](f: A => B): Extractor[A, B] = Function[A, B]((a: A) => Option(f(a)))
   }
 
+  implicit def extractorMonad[A]: Monad[({ type E[B] = Extractor[A, B] })#E] =
+    new Monad[({ type E[B] = Extractor[A, B] })#E] {
+      def point[B](b: => B): Extractor[A, B] = Extractor.Point[A, B](Some(b))
+      override def map[B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
+      def bind[B, C](eab: Extractor[A, B])(fbc: B => Extractor[A, C]): Extractor[A, C] = eab.flatMap(fbc)
+    }
+
+  implicit def extractorContravariant[B]: Contravariant[({ type E[A] = Extractor[A, B] })#E] =
+    new Contravariant[({ type E[A] = Extractor[A, B] })#E] {
+      def contramap[A, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
+    }
+
   private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
   }
@@ -36,7 +48,11 @@ object Extractor extends ExtractorInstances {
     def unapply(a: A): Option[C] = ab(a).map(bc)
   }
 
-  private case class Contravariant[A, B, C](ab: A => Option[B], ca: C => A) extends Extractor[C, B] {
+  private case class FlatMapped[A, B, C](ab: A => Option[B], bac: B => (A => Option[C])) extends Extractor[A, C] {
+    def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
+  }
+
+  private case class Contramapped[A, B, C](ab: A => Option[B], ca: C => A) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ab(ca(c))
   }
 
@@ -61,6 +77,10 @@ object Extractor extends ExtractorInstances {
   private case class Filter[A, B](ab: A => Option[B], p: B => Boolean) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
   }
+
+  private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = b
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -69,7 +89,8 @@ trait Extractor[A, B] extends (A => Option[B]) {
 
   def fn: (A => Option[B]) = this
   def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
-  def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contravariant[A, B, C](this, f)
+  def flatMap[C](f: B => Extractor[A, C]): Extractor[A, C] = Extractor.FlatMapped[A, B, C](this, f)
+  def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contramapped[A, B, C](this, f)
   def compose[C](eca: C => Option[A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
   def andThen[C](ebc: B => Option[C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
   def orElse(alternative: A => Option[B]): Extractor[A, B] = Extractor.OrElse[A, B](List(this, alternative))
@@ -77,16 +98,4 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
   def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
-}
-
-trait ExtractorInstances {
-  implicit def extractorFunctor[A]: Functor[({ type E[B] = Extractor[A, B] })#E] =
-    new Functor[({ type E[B] = Extractor[A, B] })#E] {
-      def map[B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
-    }
-
-  implicit def extractorContravariant[B]: Contravariant[({ type E[A] = Extractor[A, B] })#E] =
-    new Contravariant[({ type E[A] = Extractor[A, B] })#E] {
-      def contramap[A, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
-    }
 }
