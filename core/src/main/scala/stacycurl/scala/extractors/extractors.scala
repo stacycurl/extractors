@@ -9,6 +9,10 @@ object Extractor extends ExtractorInstances {
   def map[A]  = new MapCapturer[A]
   def when[A](f: A => Boolean): Extractor[A, A] = Function[A, A]((a: A) => f(a).option(a))
 
+  object string {
+    def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))
+  }
+
   class FromCapturer[A] {
     def apply[B](f: A => Option[B]): Extractor[A, B] = Function[A, B](f)
     def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = apply(pf.lift)

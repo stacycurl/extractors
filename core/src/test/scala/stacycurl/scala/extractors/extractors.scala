@@ -8,7 +8,7 @@ import scalaz.syntax.std.boolean._
 
 class ExtractorsTests {
   @Test def canCreateFromFunction {
-    val ContainsFoo = contains("foo")
+    val ContainsFoo = Extractor.string.contains("foo")
 
     assertEquals(List("foo", "food", "unmatched"), List("foo", "food", "other").map {
       case ContainsFoo(s) => s
@@ -28,7 +28,7 @@ class ExtractorsTests {
   }
 
   @Test def canMapOverResult {
-    val ReversedResult: Extractor[String, String] = contains("foo").map(_.reverse)
+    val ReversedResult: Extractor[String, String] = Extractor.string.contains("foo").map(_.reverse)
 
     assertEquals(List("oof", "doof", "unmatched"), List("foo", "food", "other").map {
       case ReversedResult(r) => r
@@ -70,6 +70,4 @@ class ExtractorsTests {
       case _              => false
     })
   }
-
-  private def contains(s: String) = Extractor.when[String](_.contains(s))
 }
