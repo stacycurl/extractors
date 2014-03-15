@@ -79,4 +79,8 @@ class ExtractorsTests {
       case _               => -1
     })
   }
+
+  @Test def isFunction {
+    assertEquals(List(Some("foo"), None), List("foo", "bar").map(Extractor.string.contains("foo")))
+  }
 }

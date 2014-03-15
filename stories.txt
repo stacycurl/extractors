@@ -1,6 +1,7 @@
 Todo
 
 Done
++ Is function: A => Option[B]
 + Can create from Map
 + Can compose with 'andThen'
 + Can compose
