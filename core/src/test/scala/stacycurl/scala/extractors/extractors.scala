@@ -92,4 +92,12 @@ class ExtractorsTests {
   @Test def isFunction {
     assertEquals(List(Some("foo"), None), List("foo", "bar").map(Extractor.string.contains("foo")))
   }
+
+  @Test def canFallbackUsingGetOrElse {
+    val ToInt = Extractor.fromMap(Map("foo" -> 1, "bar" -> 2)).getOrElse(3)
+
+    assertEquals(List(1, 2, 3), List("foo", "bar", "other").map {
+      case ToInt(result) => result
+    })
+  }
 }

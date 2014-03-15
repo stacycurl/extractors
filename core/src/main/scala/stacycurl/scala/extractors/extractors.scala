@@ -31,22 +31,26 @@ object Extractor extends ExtractorInstances {
   // Construct 'Function' with an appropriate function, I prefer to keep them for now to retain
   // the structure of the extractor, it's not different from an ordinary function but I plan to
   // add lables & toStrings to extractors
-  private case class Mapped[A, B, C](from: A => Option[B], f: B => C) extends Extractor[A, C] {
-    def unapply(a: A): Option[C] = from(a).map(f)
+  private case class Mapped[A, B, C](ab: A => Option[B], bc: B => C) extends Extractor[A, C] {
+    def unapply(a: A): Option[C] = ab(a).map(bc)
   }
 
-  private case class Contravariant[A, B, C](from: A => Option[B], f: C => A) extends Extractor[C, B] {
-    def unapply(c: C): Option[B] = from(f(c))
+  private case class Contravariant[A, B, C](ab: A => Option[B], ca: C => A) extends Extractor[C, B] {
+    def unapply(c: C): Option[B] = ab(ca(c))
   }
 
-  private case class Compose[A, B, C](eab: A => Option[B], eca: C => Option[A]) extends Extractor[C, B] {
-    def unapply(c: C): Option[B] = eca(c).flatMap(a => eab(a))
+  private case class Compose[A, B, C](ab: A => Option[B], ca: C => Option[A]) extends Extractor[C, B] {
+    def unapply(c: C): Option[B] = ca(c).flatMap(ab)
   }
 
   private case class OrElse[A, B](alternatives: List[A => Option[B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
 
     override def orElse(alternative: A => Option[B]): Extractor[A, B] = copy(alternatives :+ alternative)
+  }
+
+  private case class GetOrElse[A, B](ab: A => Option[B], alternative: B) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
   }
 }
 
@@ -60,6 +64,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def compose[C](eca: C => Option[A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
   def andThen[C](ebc: B => Option[C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
   def orElse(alternative: A => Option[B]): Extractor[A, B] = Extractor.OrElse[A, B](List(this, alternative))
+  def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
 }
 
 trait ExtractorInstances {
