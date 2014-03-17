@@ -36,9 +36,13 @@ object Extractor {
       def contramap[A, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
     }
 
-  implicit object extractorProfunctor extends Profunctor[Extractor] {
-    def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
-    def mapsnd[A, B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
+  implicit object extractorArrow extends Arrow[Extractor] {
+    def id[A]: Extractor[A, A] = new Id[A]
+    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B]((a: A) => Some(f(a)))
+    def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = First[A, B, C](eab)
+    def compose[A, B, C](ebc: Extractor[B, C], eab: Extractor[A, B]): Extractor[A, C] = ebc.compose(eab)
+    override def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
+    override def mapsnd[A, B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
   }
 
   private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
@@ -85,6 +89,14 @@ object Extractor {
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = b
+  }
+
+  private class Id[A] extends Extractor[A, A] {
+    def unapply(a: A): Option[A] = Some(a)
+  }
+
+  private case class First[A, B, C](ab: A => Option[B]) extends Extractor[(A, C), (B, C)] {
+    def unapply(ac: (A, C)): Option[(B, C)] = ab(ac._1).map(b => (b, ac._2))
   }
 
   private case class Zip[A, B, C, D](ab: A => Option[B], cd: C => Option[D]) extends Extractor[(A, C), (B, D)] {
