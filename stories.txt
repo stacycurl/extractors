@@ -1,11 +1,12 @@
 Todo
 
 Done
-* zip
-* flatMap
-* filter
-* orThrow
-* getOrElse
++ unzip
++ zip
++ flatMap
++ filter
++ orThrow
++ getOrElse
 + Can compose with orElse
 + Is function: A => Option[B]
 + Can create from Map

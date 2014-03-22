@@ -11,6 +11,9 @@ object Extractor {
   def map[A]  = new MapCapturer[A]
   def when[A](f: A => Boolean): Extractor[A, A] = from[A]((a: A) => f(a).option(a))
 
+  def unzip[A, B]: Extractor[List[(A, B)], (List[A], List[B])] =
+    map[List[(A, B)]](_.unzip)
+
   object string {
     def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))
   }
