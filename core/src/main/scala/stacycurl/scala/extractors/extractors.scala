@@ -46,6 +46,11 @@ object Extractor {
     override def mapsnd[A, B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
   }
 
+  implicit def extractorUnzip[A]: Unzip[({ type E[B] = Extractor[A, B] })#E] =
+    new Unzip[({ type E[B] = Extractor[A, B] })#E] {
+      def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
+    }
+
   private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
   }
@@ -120,5 +125,6 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
   def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
+  def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
 }
