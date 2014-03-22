@@ -10,9 +10,7 @@ object Extractor {
   def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = from[K](map.get)
   def map[A]  = new MapCapturer[A]
   def when[A](f: A => Boolean): Extractor[A, A] = from[A]((a: A) => f(a).option(a))
-
-  def unzip[A, B]: Extractor[List[(A, B)], (List[A], List[B])] =
-    map[List[(A, B)]](_.unzip)
+  def unzip[A, B, F[_]](implicit U: Unzip[F]): Extractor[F[(A, B)], (F[A], F[B])] = map[F[(A, B)]](U.unzip)
 
   object string {
     def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))

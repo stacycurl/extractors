@@ -4,6 +4,7 @@ import org.junit.Test
 import scala.util._
 
 import org.junit.Assert._
+import scalaz.std.list._
 import scalaz.syntax.std.boolean._
 
 
@@ -139,7 +140,7 @@ class ExtractorsTests {
 
   @Test def unzip {
     val TupleOfLists: Extractor[List[(Int, String)], (List[Int], List[String])] =
-      Extractor.unzip[Int, String]
+      Extractor.unzip[Int, String, List]
 
     assertEquals((List(1, 2), List("one", "two")), List((1, "one"), (2, "two")) match {
       case TupleOfLists(ints, strings) => (ints, strings)
