@@ -14,6 +14,12 @@ object Extractor {
 
   object string {
     def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))
+
+    def regex[A](regex: String): RegexCapturer[A] = new RegexCapturer[A](regex)
+
+    class RegexCapturer[A](regex: String) {
+      def apply(pf: PartialFunction[List[String], A]): Extractor[String, A] = Extractor.Regex[A](regex, pf)
+    }
   }
 
   class FromCapturer[A] {
@@ -111,6 +117,10 @@ object Extractor {
 
   private case class Lens[A, B, C](ab: A => Option[B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
+  }
+
+  private case class Regex[A](regex: String, pf: PartialFunction[List[String], A]) extends Extractor[String, A] {
+    def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(pf.lift)
   }
 }
 

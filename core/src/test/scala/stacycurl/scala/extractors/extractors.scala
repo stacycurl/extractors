@@ -157,4 +157,17 @@ class ExtractorsTests {
       case _           => false
     })
   }
+
+  @Test def regex {
+    val Matches = Extractor.string.regex("(.*):(.*)") {
+      case List(first, second) => (first, second)
+    }
+
+    assertEquals(List(("abc", "def"), ("", "def"), ("abc", ""), ("?", "?")),
+      List("abc:def", ":def", "abc:", "blah").map {
+        case Matches(first, second) => (first, second)
+        case _                      => ("?", "?")
+      }
+    )
+  }
 }

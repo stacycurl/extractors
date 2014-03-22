@@ -1,6 +1,7 @@
 Todo
 
 Done
++ regex
 + lens
 + unzip
 + zip
