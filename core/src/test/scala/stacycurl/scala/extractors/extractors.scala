@@ -2,6 +2,7 @@ package stacycurl.scala.extractors
 
 import org.junit.Test
 import scala.util._
+import scalaz.Lens
 
 import org.junit.Assert._
 import scalaz.std.list._
@@ -144,6 +145,16 @@ class ExtractorsTests {
 
     assertEquals((List(1, 2), List("one", "two")), List((1, "one"), (2, "two")) match {
       case TupleOfLists(ints, strings) => (ints, strings)
+    })
+  }
+
+  @Test def lens {
+    val Is1One = Extractor.when[(Int, String)](_ == (1, "one"))
+    val FirstIs1 = Is1One.lens(Lens.firstLens[Int, String])
+
+    assertEquals(List(true, false), List((1, "one"), (2, "two")).map {
+      case FirstIs1(_) => true
+      case _           => false
     })
   }
 }

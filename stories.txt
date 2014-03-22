@@ -1,6 +1,7 @@
 Todo
 
 Done
++ lens
 + unzip
 + zip
 + flatMap

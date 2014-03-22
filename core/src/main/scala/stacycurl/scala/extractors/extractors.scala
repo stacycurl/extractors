@@ -108,6 +108,10 @@ object Extractor {
   private case class Zip[A, B, C, D](ab: A => Option[B], cd: C => Option[D]) extends Extractor[(A, C), (B, D)] {
     def unapply(ac: (A, C)): Option[(B, D)] = for { b <- ab(ac._1); d <- cd(ac._2) } yield (b, d)
   }
+
+  private case class Lens[A, B, C](ab: A => Option[B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
+    def unapply(a: A): Option[C] = ab(a).map(lens.get)
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -127,4 +131,5 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
+  def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
 }
