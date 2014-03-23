@@ -195,7 +195,7 @@ class ExtractorsTests {
 
   @Test def exists {
     val ContainsFoo = Extractor.string.contains("foo")
-    val ExistsContainsFoo = ContainsFoo.exists
+    val ExistsContainsFoo = ContainsFoo.exists[List]
 
     assertEquals(List(true, true, true, false, false),
       List(List("foo"), List("bar", "foo"), Nil, List("bar"), List("bar", "barf")).map {

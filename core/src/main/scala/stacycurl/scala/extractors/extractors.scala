@@ -127,7 +127,7 @@ object Extractor {
     def unapply(oa: Option[A]): Option[B] = oa.flatMap(ab)
   }
 
-  private case class ForAll[A, B, F[_] : MonadPlus : Foldable](ab: A => Option[B]) extends Extractor[F[A], F[B]] {
+  private case class ForAll[A, B, F[_]: MonadPlus: Foldable](ab: A => Option[B]) extends Extractor[F[A], F[B]] {
     private val M = implicitly[MonadPlus[F]]
     private val F = implicitly[Foldable[F]]
 
@@ -140,12 +140,17 @@ object Extractor {
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
 
-  private case class Exists[A, B](ab: A => Option[B]) extends Extractor[List[A], List[B]] {
-    def unapply(la: List[A]): Option[List[B]] = {
-      val result = la.flatMap(a => ab(a).toList)
+  private case class Exists[A, B, F[_]: MonadPlus: Foldable](ab: A => Option[B]) extends Extractor[F[A], F[B]] {
+    private val M = implicitly[MonadPlus[F]]
+    private val F = implicitly[Foldable[F]]
 
-      (result.nonEmpty || la.isEmpty).option(result)
+    def unapply(fa: F[A]): Option[F[B]] = {
+      val result = M.bind(fa)(a => optionToF(ab(a)))
+
+      (!F.empty(result) || F.empty(fa)).option(result)
     }
+
+    private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
 }
 
@@ -168,6 +173,6 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
   def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
   def liftToOption: Extractor[Option[A], B] = Extractor.LiftOption[A, B](this)
-  def forall[F[_] : MonadPlus : Foldable]: Extractor[F[A], F[B]] = Extractor.ForAll[A, B, F](this)
-  def exists: Extractor[List[A], List[B]] = Extractor.Exists[A, B](this)
+  def forall[F[_]: MonadPlus: Foldable]: Extractor[F[A], F[B]] = Extractor.ForAll[A, B, F](this)
+  def exists[F[_]: MonadPlus: Foldable]: Extractor[F[A], F[B]] = Extractor.Exists[A, B, F](this)
 }
