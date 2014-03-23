@@ -1,6 +1,7 @@
 Todo
 
 Done
++ liftToOption
 + regex
 + lens
 + unzip

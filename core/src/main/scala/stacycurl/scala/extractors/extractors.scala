@@ -122,6 +122,10 @@ object Extractor {
   private case class Regex[A](regex: String, pf: PartialFunction[List[String], A]) extends Extractor[String, A] {
     def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(pf.lift)
   }
+
+  private case class LiftOption[A, B](ab: A => Option[B]) extends Extractor[Option[A], B] {
+    def unapply(oa: Option[A]): Option[B] = oa.flatMap(ab)
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -142,4 +146,5 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
   def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
+  def liftToOption: Extractor[Option[A], B] = Extractor.LiftOption[A, B](this)
 }
