@@ -180,4 +180,16 @@ class ExtractorsTests {
       case _                    => false
     })
   }
+
+  @Test def all {
+    val ContainsFoo = Extractor.string.contains("foo")
+    val AllContainsFoo = ContainsFoo.all
+
+    assertEquals(List(true, true, true, false, false),
+      List(List("foo"), List("food", "foo"), Nil, List("bar"), List("foo", "bar")).map {
+        case AllContainsFoo(_) => true
+        case _                 => false
+      }
+    )
+  }
 }

@@ -1,6 +1,7 @@
 Todo
 
 Done
++ all
 + liftToOption
 + regex
 + lens
