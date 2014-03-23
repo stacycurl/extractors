@@ -181,14 +181,26 @@ class ExtractorsTests {
     })
   }
 
-  @Test def all {
+  @Test def forall {
     val ContainsFoo = Extractor.string.contains("foo")
-    val AllContainsFoo = ContainsFoo.all
+    val AllContainsFoo = ContainsFoo.forall
 
     assertEquals(List(true, true, true, false, false),
       List(List("foo"), List("food", "foo"), Nil, List("bar"), List("foo", "bar")).map {
         case AllContainsFoo(_) => true
         case _                 => false
+      }
+    )
+  }
+
+  @Test def exists {
+    val ContainsFoo = Extractor.string.contains("foo")
+    val ExistsContainsFoo = ContainsFoo.exists
+
+    assertEquals(List(true, true, true, false, false),
+      List(List("foo"), List("bar", "foo"), Nil, List("bar"), List("bar", "barf")).map {
+        case ExistsContainsFoo(_) => true
+        case _                    => false
       }
     )
   }

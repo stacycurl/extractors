@@ -127,11 +127,19 @@ object Extractor {
     def unapply(oa: Option[A]): Option[B] = oa.flatMap(ab)
   }
 
-  private case class All[A, B](ab: A => Option[B]) extends Extractor[List[A], List[B]] {
+  private case class ForAll[A, B](ab: A => Option[B]) extends Extractor[List[A], List[B]] {
     def unapply(la: List[A]): Option[List[B]] = {
       val result = la.flatMap(a => ab(a).toList)
 
       (result.size == la.size).option(result)
+    }
+  }
+
+  private case class Exists[A, B](ab: A => Option[B]) extends Extractor[List[A], List[B]] {
+    def unapply(la: List[A]): Option[List[B]] = {
+      val result = la.flatMap(a => ab(a).toList)
+
+      (result.nonEmpty || la.isEmpty).option(result)
     }
   }
 }
@@ -155,5 +163,6 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
   def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
   def liftToOption: Extractor[Option[A], B] = Extractor.LiftOption[A, B](this)
-  def all: Extractor[List[A], List[B]] = Extractor.All[A, B](this)
+  def forall: Extractor[List[A], List[B]] = Extractor.ForAll[A, B](this)
+  def exists: Extractor[List[A], List[B]] = Extractor.Exists[A, B](this)
 }

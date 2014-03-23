@@ -1,7 +1,8 @@
 Todo
 
 Done
-+ all
++ exists
++ forall
 + liftToOption
 + regex
 + lens
