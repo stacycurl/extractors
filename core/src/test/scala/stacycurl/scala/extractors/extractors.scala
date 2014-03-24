@@ -204,4 +204,12 @@ class ExtractorsTests {
       }
     )
   }
+
+  @Test def pf {
+    val Mapped = Extractor.fromMap(1 -> 2, 2 -> 3)
+
+    assertEquals(List(2, 3), List(1, 2).collect(Mapped.pf))
+
+    assertSame(Mapped.pf, Extractor.from[Int].pf(Mapped.pf).pf)
+  }
 }

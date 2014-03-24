@@ -14,7 +14,6 @@ object Extractor {
 
   object string {
     def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))
-
     def regex[A](regex: String): RegexCapturer[A] = new RegexCapturer[A](regex)
 
     class RegexCapturer[A](regex: String) {
@@ -24,7 +23,7 @@ object Extractor {
 
   class FromCapturer[A] {
     def apply[B](f: A => Option[B]): Extractor[A, B] = Function[A, B](f)
-    def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = apply(pf.lift)
+    def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = Partial[A, B](pf)
   }
 
   class MapCapturer[A] {
@@ -59,6 +58,10 @@ object Extractor {
 
   private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
+  }
+
+  private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = pf.lift(a)
   }
 
   // These classes are unnecessary as Extractor.{map, contramap, compose, andThen, orElse} could
@@ -119,8 +122,8 @@ object Extractor {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
   }
 
-  private case class Regex[A](regex: String, pf: PartialFunction[List[String], A]) extends Extractor[String, A] {
-    def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(pf.lift)
+  private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
+    def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(rpf.lift)
   }
 
   private case class LiftOption[A, B](ab: A => Option[B]) extends Extractor[Option[A], B] {
@@ -159,6 +162,12 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def unapply(a: A): Option[B]
 
   def fn: (A => Option[B]) = this
+
+  val pf: PartialFunction[A, B] = new PartialFunction[A, B] {
+    def isDefinedAt(a: A): Boolean = unapply(a).isDefined
+    def apply(a: A): B = unapply(a).get
+  }
+
   def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
   def flatMap[C](f: B => Extractor[A, C]): Extractor[A, C] = Extractor.FlatMapped[A, B, C](this, f)
   def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contramapped[A, B, C](this, f)
