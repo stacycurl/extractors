@@ -34,6 +34,11 @@ object Extractor {
     def apply[B](f: A => B): Extractor[A, B] = Function[A, B](f)
   }
 
+  implicit def extractorMonoid[A, B]: Monoid[Extractor[A, B]] = new Monoid[Extractor[A, B]] {
+    val zero: Extractor[A, B] = Never.asInstanceOf[Extractor[A, B]]
+    def append(e1: Extractor[A, B], e2: => Extractor[A, B]): Extractor[A, B] = e1.orElse(e2)
+  }
+
   implicit def extractorMonad[A]: Monad[({ type E[B] = Extractor[A, B] })#E] =
     new Monad[({ type E[B] = Extractor[A, B] })#E] {
       def point[B](b: => B): Extractor[A, B] = Extractor.Point[A, B](Some(b))
@@ -124,6 +129,10 @@ object Extractor {
 
   private class Id[A] extends Extractor[A, A] {
     def unapply(a: A): Option[A] = Some(a)
+  }
+
+  private object Never extends Extractor[Nothing, Nothing] {
+    def unapply(n: Nothing): Option[Nothing] = None
   }
 
   private case class First[A, B, C](ab: A => Option[B]) extends Extractor[(A, C), (B, C)] {
