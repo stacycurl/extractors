@@ -13,6 +13,7 @@ class ExtractorsTests {
   @Test def canCreateFromFunction {
     val ContainsFoo = Extractor.string.contains("foo")
 
+    assertEquals("Contains(foo)", ContainsFoo.describe)
     assertEquals(List("foo", "food", "unmatched"), List("foo", "food", "other").map {
       case ContainsFoo(s) => s
       case _              => "unmatched"

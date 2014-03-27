@@ -27,6 +27,7 @@ object Extractor {
 
     private case class Contains(sub: String) extends Extractor[String, String] {
       def unapply(s: String): Option[String] = s.contains(sub).option(s)
+      override def describe: String = s"Contains($sub)"
     }
   }
 
@@ -210,6 +211,7 @@ object Extractor {
 trait Extractor[A, B] extends (A => Option[B]) {
   def apply(a: A): Option[B] = unapply(a)
   def unapply(a: A): Option[B]
+  def describe: String = ""
 
   def fn: (A => Option[B]) = this
 
