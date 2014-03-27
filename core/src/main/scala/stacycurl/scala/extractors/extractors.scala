@@ -130,6 +130,7 @@ object Extractor {
   // The first element to be added, to the _head_ of the list, requires appending to the end
   private case class First[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
+    override def describe: String = "First(%s)".format(alternatives.map(_.describe).mkString(", "))
 
     override def first(alternative: Extractor[A, B]): Extractor[A, B] = copy(alternatives :+ alternative)
   }
@@ -167,6 +168,7 @@ object Extractor {
 
   private object Never extends Extractor[Nothing, Nothing] {
     def unapply(n: Nothing): Option[Nothing] = None
+    override def describe: String = "Never"
   }
 
   private case class ArrFirst[A, B, C](ab: Extractor[A, B]) extends Extractor[(A, C), (B, C)] {
