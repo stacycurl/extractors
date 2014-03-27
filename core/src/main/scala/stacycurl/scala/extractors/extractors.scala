@@ -74,12 +74,12 @@ object Extractor {
       def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
     }
 
-  private case class Function[A, B](f: A => B) extends Extractor[A, B] {
-    def unapply(a: A): Option[B] = Some(f(a))
-  }
-
   private case class OptFunction[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
+  }
+
+  private case class Function[A, B](f: A => B) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = Some(f(a))
   }
 
   // These classes are unnecessary as Extractor.{map, contramap, compose, andThen, orElse} could
@@ -98,49 +98,49 @@ object Extractor {
     def unapply(a: A): Option[A] = p(a).option(a)
   }
 
-  private case class Mapped[A, B, C](ab: A => Option[B], bc: B => C) extends Extractor[A, C] {
+  private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(bc)
   }
 
-  private case class FlatMapped[A, B, C](ab: A => Option[B], bac: B => (A => Option[C])) extends Extractor[A, C] {
+  private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
   }
 
-  private case class Contramapped[A, B, C](ab: A => Option[B], ca: C => A) extends Extractor[C, B] {
+  private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ab(ca(c))
   }
 
-  private case class Compose[A, B, C](ab: A => Option[B], ca: C => Option[A]) extends Extractor[C, B] {
+  private case class Compose[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
   }
 
   // The first element to be added, to the _head_ of the list, requires appending to the end
-  private case class First[A, B](alternatives: List[A => Option[B]]) extends Extractor[A, B] {
+  private case class First[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
 
-    override def first(alternative: A => Option[B]): Extractor[A, B] = copy(alternatives :+ alternative)
+    override def first(alternative: Extractor[A, B]): Extractor[A, B] = copy(alternatives :+ alternative)
   }
 
   // The last element to be added, to the _head_ of the list, i.e. stored as the first, bit odd.
-  private case class Last[A, B](alternatives: List[A => Option[B]]) extends Extractor[A, B] {
+  private case class Last[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
 
-    override def last(alternative: A => Option[B]): Extractor[A, B] = copy(alternative :: alternatives)
+    override def last(alternative: Extractor[A, B]): Extractor[A, B] = copy(alternative :: alternatives)
   }
 
-  private case class Append[A, B](lhs: A => Option[B], rhs: A => Option[B], S: Semigroup[B]) extends Extractor[A, B] {
+  private case class Append[A, B](lhs: Extractor[A, B], rhs: Extractor[A, B], S: Semigroup[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = scalaz.std.option.optionMonoid[B](S).append(lhs(a), rhs(a))
   }
 
-  private case class OrThrow[A, B](ab: A => Option[B], exception: A => Exception) extends Extractor[A, B] {
+  private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
   }
 
-  private case class GetOrElse[A, B](ab: A => Option[B], alternative: B) extends Extractor[A, B] {
+  private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
   }
 
-  private case class Filter[A, B](ab: A => Option[B], p: B => Boolean) extends Extractor[A, B] {
+  private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
   }
 
@@ -156,7 +156,7 @@ object Extractor {
     def unapply(n: Nothing): Option[Nothing] = None
   }
 
-  private case class ArrFirst[A, B, C](ab: A => Option[B]) extends Extractor[(A, C), (B, C)] {
+  private case class ArrFirst[A, B, C](ab: Extractor[A, B]) extends Extractor[(A, C), (B, C)] {
     def unapply(ac: (A, C)): Option[(B, C)] = ab(ac._1).map(b => (b, ac._2))
   }
 
@@ -164,11 +164,11 @@ object Extractor {
     def unapply(fab: F[(A, B)]): Option[(F[A], F[B])] = Some(unzip.unzip(fab))
   }
 
-  private case class Zip[A, B, C, D](ab: A => Option[B], cd: C => Option[D]) extends Extractor[(A, C), (B, D)] {
+  private case class Zip[A, B, C, D](ab: Extractor[A, B], cd: Extractor[C, D]) extends Extractor[(A, C), (B, D)] {
     def unapply(ac: (A, C)): Option[(B, D)] = for { b <- ab(ac._1); d <- cd(ac._2) } yield (b, d)
   }
 
-  private case class Lens[A, B, C](ab: A => Option[B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
+  private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
   }
 
@@ -176,11 +176,11 @@ object Extractor {
     def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(rpf.lift)
   }
 
-  private case class LiftOption[A, B](ab: A => Option[B]) extends Extractor[Option[A], B] {
+  private case class LiftOption[A, B](ab: Extractor[A, B]) extends Extractor[Option[A], B] {
     def unapply(oa: Option[A]): Option[B] = oa.flatMap(ab)
   }
 
-  private case class ForAll[A, B, F[_]: MonadPlus: Foldable](ab: A => Option[B]) extends Extractor[F[A], F[B]] {
+  private case class ForAll[A, B, F[_]: MonadPlus: Foldable](ab: Extractor[A, B]) extends Extractor[F[A], F[B]] {
     private val M = implicitly[MonadPlus[F]]
     private val F = implicitly[Foldable[F]]
 
@@ -193,7 +193,7 @@ object Extractor {
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
 
-  private case class Exists[A, B, F[_]: MonadPlus: Foldable](ab: A => Option[B]) extends Extractor[F[A], F[B]] {
+  private case class Exists[A, B, F[_]: MonadPlus: Foldable](ab: Extractor[A, B]) extends Extractor[F[A], F[B]] {
     private val M = implicitly[MonadPlus[F]]
     private val F = implicitly[Foldable[F]]
 
@@ -222,22 +222,22 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def flatMap[C](f: B => Extractor[A, C]): Extractor[A, C] = Extractor.FlatMapped[A, B, C](this, f)
   def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contramapped[A, B, C](this, f)
 
-  def compose[C](eca: C => Option[A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
-  def andThen[C](ebc: B => Option[C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
+  def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
+  def andThen[C](ebc: Extractor[B, C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
 
-  def orElse(alternative: A => Option[B]): Extractor[A, B] = first(alternative)
-  def first(alternative: A => Option[B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
-  def last(alternative: A => Option[B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
+  def orElse(alternative: Extractor[A, B]): Extractor[A, B] = first(alternative)
+  def first(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
+  def last(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
   def orThrow(exception: Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, _ => exception)
   def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
 
-  def append(alternative: A => Option[B])(implicit S: Semigroup[B]): Extractor[A, B] =
+  def append(alternative: Extractor[A, B])(implicit S: Semigroup[B]): Extractor[A, B] =
     Extractor.Append[A, B](this, alternative, S)
 
   def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
-  def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
+  def zip[C, D](f: Extractor[C, D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
   def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
   def liftToOption: Extractor[Option[A], B] = Extractor.LiftOption[A, B](this)
   def forall[F[_]: MonadPlus: Foldable]: Extractor[F[A], F[B]] = Extractor.ForAll[A, B, F](this)
