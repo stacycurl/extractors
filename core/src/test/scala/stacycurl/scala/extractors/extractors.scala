@@ -67,11 +67,19 @@ class ExtractorsTests {
     })
   }
 
+  @Test def when {
+    assertEquals("When", IsThree.describe)
+    assertEquals("When(== 3)", Extractor.when[Int](_ == 3, "== 3").describe)
+
+    assertEquals(List(true, false), List(3, 4).map {
+      case IsThree(_) => true
+      case _          => false
+    })
+  }
+
   @Test def canCompose {
     val LengthThree = IsThree.compose(Length)
 
-    assertEquals("Function", Length.describe)
-    assertEquals("When", IsThree.describe)
     assertEquals("Compose(When, Function)", LengthThree.describe)
     assertEquals(List(true, true, false), List("foo", "bar", "other").map {
       case LengthThree(_) => true
