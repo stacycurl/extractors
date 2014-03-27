@@ -151,6 +151,7 @@ class ExtractorsTests {
   @Test def canFallbackUsingGetOrElse {
     val ToInt = Extractor.fromMap("foo" -> 1, "bar" -> 2).getOrElse(3)
 
+    assertEquals("GetOrElse(FromMap(size = 2), 3)", ToInt.describe)
     assertEquals(List(1, 2, 3), List("foo", "bar", "other").map {
       case ToInt(result) => result
     })

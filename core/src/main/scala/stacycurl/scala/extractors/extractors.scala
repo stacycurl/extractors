@@ -161,6 +161,7 @@ object Extractor {
 
   private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
+    override def describe: String = s"GetOrElse(${ab.describe}, $alternative)"
   }
 
   private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
