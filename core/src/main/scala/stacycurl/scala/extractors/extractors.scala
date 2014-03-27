@@ -1,6 +1,7 @@
 package stacycurl.scala.extractors
 
 import scalaz._
+import scalaz.std.list._
 import scalaz.syntax.std.boolean._
 
 
@@ -11,6 +12,10 @@ object Extractor {
   def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = FromMap[K, V](map)
   def when[A](p: A => Boolean): Extractor[A, A] = When[A](p)
   def unzip[A, B, F[_]](implicit U: scalaz.Unzip[F]): Extractor[F[(A, B)], (F[A], F[B])] = Unzip[A, B, F](U)
+  def orElse[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = first[A, B](alternatives: _*)
+  def first[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = First[A, B](alternatives.toList)
+  def last[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = Last[A, B](alternatives.toList)
+  def never[A, B]: Extractor[A, B] = Never.asInstanceOf[Extractor[A, B]]
 
   object string {
     def contains(sub: String): Extractor[String, String] = Contains(sub)
@@ -34,9 +39,13 @@ object Extractor {
     def apply[B](f: A => B): Extractor[A, B] = Function[A, B](f)
   }
 
-  implicit def extractorMonoid[A, B]: Monoid[Extractor[A, B]] = new Monoid[Extractor[A, B]] {
-    val zero: Extractor[A, B] = Never.asInstanceOf[Extractor[A, B]]
-    def append(e1: Extractor[A, B], e2: => Extractor[A, B]): Extractor[A, B] = e1.orElse(e2)
+  object monoid {
+    object first   { implicit def extractorMonoid[A, B] = apply[A, B](_ orElse _)                           }
+    object last    { implicit def extractorMonoid[A, B] = apply[A, B](_ last _)                             }
+    object append  { implicit def extractorMonoid[A, B](implicit S: Semigroup[B]) = apply[A, B](_ append _) }
+
+    def apply[A, B](f: (Extractor[A, B], => Extractor[A, B]) => Extractor[A, B]): Monoid[Extractor[A, B]] =
+      Monoid.instance[Extractor[A, B]](f, never[A, B])
   }
 
   implicit def extractorMonad[A]: Monad[({ type E[B] = Extractor[A, B] })#E] =
@@ -54,7 +63,7 @@ object Extractor {
   implicit object extractorArrow extends Arrow[Extractor] {
     def id[A]: Extractor[A, A] = new Id[A]
     def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f)
-    def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = First[A, B, C](eab)
+    def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = ArrFirst[A, B, C](eab)
     def compose[A, B, C](ebc: Extractor[B, C], eab: Extractor[A, B]): Extractor[A, C] = ebc.compose(eab)
     override def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
     override def mapsnd[A, B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
@@ -105,10 +114,22 @@ object Extractor {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
   }
 
-  private case class OrElse[A, B](alternatives: List[A => Option[B]]) extends Extractor[A, B] {
+  // The first element to be added, to the _head_ of the list, requires appending to the end
+  private case class First[A, B](alternatives: List[A => Option[B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
 
-    override def orElse(alternative: A => Option[B]): Extractor[A, B] = copy(alternatives :+ alternative)
+    override def first(alternative: A => Option[B]): Extractor[A, B] = copy(alternatives :+ alternative)
+  }
+
+  // The last element to be added, to the _head_ of the list, i.e. stored as the first, bit odd.
+  private case class Last[A, B](alternatives: List[A => Option[B]]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
+
+    override def last(alternative: A => Option[B]): Extractor[A, B] = copy(alternative :: alternatives)
+  }
+
+  private case class Append[A, B](lhs: A => Option[B], rhs: A => Option[B], S: Semigroup[B]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = scalaz.std.option.optionMonoid[B](S).append(lhs(a), rhs(a))
   }
 
   private case class OrThrow[A, B](ab: A => Option[B], exception: A => Exception) extends Extractor[A, B] {
@@ -135,7 +156,7 @@ object Extractor {
     def unapply(n: Nothing): Option[Nothing] = None
   }
 
-  private case class First[A, B, C](ab: A => Option[B]) extends Extractor[(A, C), (B, C)] {
+  private case class ArrFirst[A, B, C](ab: A => Option[B]) extends Extractor[(A, C), (B, C)] {
     def unapply(ac: (A, C)): Option[(B, C)] = ab(ac._1).map(b => (b, ac._2))
   }
 
@@ -200,12 +221,20 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
   def flatMap[C](f: B => Extractor[A, C]): Extractor[A, C] = Extractor.FlatMapped[A, B, C](this, f)
   def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contramapped[A, B, C](this, f)
+
   def compose[C](eca: C => Option[A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
   def andThen[C](ebc: B => Option[C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
-  def orElse(alternative: A => Option[B]): Extractor[A, B] = Extractor.OrElse[A, B](List(this, alternative))
+
+  def orElse(alternative: A => Option[B]): Extractor[A, B] = first(alternative)
+  def first(alternative: A => Option[B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
+  def last(alternative: A => Option[B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
   def orThrow(exception: Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, _ => exception)
   def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
+
+  def append(alternative: A => Option[B])(implicit S: Semigroup[B]): Extractor[A, B] =
+    Extractor.Append[A, B](this, alternative, S)
+
   def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: C => Option[D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)

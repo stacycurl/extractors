@@ -2,7 +2,7 @@ package stacycurl.scala.extractors
 
 import org.junit.Test
 import scala.util._
-import scalaz.Lens
+import scalaz.{Lens, Monoid, Semigroup}
 
 import org.junit.Assert._
 import scalaz.std.list._
@@ -84,11 +84,36 @@ class ExtractorsTests {
   }
 
   @Test def canComposeWithAlternative {
-    val ContainsFooOrBar = Extractor.string.contains("foo").orElse(Extractor.string.contains("bar"))
+    val ContainsFooOrBar = Extractor.never[String, String].orElse(
+      Extractor.string.contains("foo").map(_ => "foo")).orElse(
+        Extractor.string.contains("bar").map(_ => "bar"))
 
-    assertEquals(List(true, true, true, false), List("foobar", "foo", "bar", "other").map {
-      case ContainsFooOrBar(_) => true
-      case _                   => false
+    assertEquals(List("foo", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
+      case ContainsFooOrBar(sub) => sub
+      case _                   => "unmatched"
+    })
+  }
+
+  @Test def canComposeWithLast {
+    val ContainsFooOrBar = Extractor.never[String, String].last(
+      Extractor.string.contains("foo").map(_ => "foo")).last(
+        Extractor.string.contains("bar").map(_ => "bar"))
+
+    assertEquals(List("bar", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
+      case ContainsFooOrBar(sub) => sub
+      case _                     => "unmatched"
+    })
+  }
+
+  @Test def canComposeWithAppend {
+    implicit val firstString: Semigroup[String] = Semigroup.firstSemigroup[String]
+
+    val ContainsFooOrBar = Extractor.string.contains("foo").map(_ => "foo").append(
+      Extractor.string.contains("bar").map(_ => "bar"))
+
+    assertEquals(List("foo", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
+      case ContainsFooOrBar(sub) => sub
+      case _                     => "unmatched"
     })
   }
 
