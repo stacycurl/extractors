@@ -145,6 +145,7 @@ object Extractor {
 
   private case class Append[A, B](lhs: Extractor[A, B], rhs: Extractor[A, B], S: Semigroup[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = scalaz.std.option.optionMonoid[B](S).append(lhs(a), rhs(a))
+    override def describe: String = s"Append(${lhs.describe}, ${rhs.describe})"
   }
 
   private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {

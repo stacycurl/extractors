@@ -122,6 +122,7 @@ class ExtractorsTests {
     val ContainsFooOrBar = Extractor.string.contains("foo").map(_ => "foo").append(
       Extractor.string.contains("bar").map(_ => "bar"))
 
+    assertEquals("Append(Contains(foo).map, Contains(bar).map)", ContainsFooOrBar.describe)
     assertEquals(List("foo", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
       case ContainsFooOrBar(sub) => sub
       case _                     => "unmatched"
