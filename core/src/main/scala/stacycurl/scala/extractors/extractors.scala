@@ -110,9 +110,9 @@ object Extractor {
     def describe: String = "When"
   }
 
-  private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
+  private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C, name: Option[String]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(bc)
-    def describe: String = ab.describe + ".map"
+    def describe: String = parenthesise(ab.describe + ".map", name)
   }
 
   private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C], name: Option[String])
@@ -264,7 +264,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
     def apply(a: A): B = unapply(a).get
   }
 
-  def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
+  def map[C](f: B => C, name: String = null): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f, Option(name))
 
   def flatMap[C](f: B => Extractor[A, C], name: String = null): Extractor[A, C] =
     Extractor.FlatMapped[A, B, C](this, f, Option(name))

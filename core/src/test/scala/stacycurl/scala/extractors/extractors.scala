@@ -35,9 +35,12 @@ class ExtractorsTests {
   }
 
   @Test def canMapOverResult {
-    val ReversedResult: Extractor[String, String] = Extractor.string.contains("foo").map(_.reverse)
+    val ContainsFoo = Extractor.string.contains("foo")
+    val ReversedResult: Extractor[String, String] = ContainsFoo.map(_.reverse)
 
     assertEquals("Contains(foo).map", ReversedResult.describe)
+    assertEquals("Contains(foo).map(reverse)", ContainsFoo.map(_.reverse, "reverse").describe)
+
     assertEquals(List("oof", "doof", "unmatched"), List("foo", "food", "other").map {
       case ReversedResult(r) => r
       case _                 => "unmatched"
