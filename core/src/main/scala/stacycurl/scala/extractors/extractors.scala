@@ -89,6 +89,7 @@ object Extractor {
   // add lables & toStrings to extractors
   private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = pf.lift(a)
+    override def describe: String = "Partial"
   }
 
   private case class FromMap[A, B](map: Map[A, B]) extends Extractor[A, B] {

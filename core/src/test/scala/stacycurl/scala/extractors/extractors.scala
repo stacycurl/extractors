@@ -25,6 +25,7 @@ class ExtractorsTests {
       case s if s.contains("bar") => s
     }
 
+    assertEquals("Partial", ContainsBar.describe)
     assertEquals(List("bar", "bard", "unmatched"), List("bar", "bard", "other").map {
       case ContainsBar(s) => s
       case _              => "unmatched"
