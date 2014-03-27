@@ -186,6 +186,7 @@ object Extractor {
 
   private case class ArrFirst[A, B, C](ab: Extractor[A, B]) extends Extractor[(A, C), (B, C)] {
     def unapply(ac: (A, C)): Option[(B, C)] = ab(ac._1).map(b => (b, ac._2))
+    override def describe: String = s"ArrFirst(${ab.describe})"
   }
 
   private case class Unzip[A, B, F[_]](unzip: scalaz.Unzip[F]) extends Extractor[F[(A, B)], (F[A], F[B])] {
@@ -282,4 +283,6 @@ trait Extractor[A, B] extends (A => Option[B]) {
 
   def exists[F[_]](implicit M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]): Extractor[F[A], F[B]] =
     Extractor.Exists[A, B, F](this)
+
+  def arrFirst[C]: Extractor[(A, C), (B, C)] = Extractor.extractorArrow.first[A, B, C](this)
 }

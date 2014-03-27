@@ -303,4 +303,15 @@ class ExtractorsTests {
       case _        => 0
     })
   }
+
+  @Test def first {
+    val ContainsFoo = Extractor.string.contains("foo")
+    val FirstContainsFoo = ContainsFoo.arrFirst[Int]
+
+    assertEquals("ArrFirst(Contains(foo))", FirstContainsFoo.describe)
+    assertEquals(List(true, false), List(("foo", 1), ("bar", 2)).map {
+      case FirstContainsFoo(_) => true
+      case _                   => false
+    })
+  }
 }
