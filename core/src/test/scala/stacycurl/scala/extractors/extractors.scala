@@ -145,12 +145,14 @@ class ExtractorsTests {
     case class Unknown(message: String) extends Exception(message)
     val ToInt = Extractor.fromMap("foo" -> 1).orThrow(Unknown("unknown"))
 
+    assertEquals("OrThrow(FromMap(size = 1))", ToInt.describe)
     assertEquals(List(Success(1), Failure(Unknown("unknown"))), List("foo", "other").map(item => {
       Try(item match { case ToInt(i) => i })
     }))
 
     val ToDouble = Extractor.fromMap("foo" -> 1.0).orThrow((s: String) => Unknown("unknown: " + s))
 
+    assertEquals("OrThrow(FromMap(size = 1))", ToDouble.describe)
     assertEquals(List(Success(1.0), Failure(Unknown("unknown: other"))), List("foo", "other").map(item => {
       Try(item match { case ToDouble(d) => d })
     }))

@@ -150,6 +150,7 @@ object Extractor {
 
   private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
+    override def describe: String = s"OrThrow(${ab.describe})"
   }
 
   private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
