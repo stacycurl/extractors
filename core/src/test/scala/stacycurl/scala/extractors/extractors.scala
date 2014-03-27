@@ -243,6 +243,7 @@ class ExtractorsTests {
     val ContainsFoo = Extractor.string.contains("foo")
     val ExistsContainsFoo = ContainsFoo.exists[List]
 
+    assertEquals("Exists[List](Contains(foo))", ExistsContainsFoo.describe)
     assertEquals(List(true, true, true, false, false),
       List(List("foo"), List("bar", "foo"), Nil, List("bar"), List("bar", "barf")).map {
         case ExistsContainsFoo(_) => true

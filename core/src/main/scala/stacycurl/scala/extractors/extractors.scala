@@ -219,15 +219,16 @@ object Extractor {
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
 
-  private case class Exists[A, B, F[_]: MonadPlus: Foldable](ab: Extractor[A, B]) extends Extractor[F[A], F[B]] {
-    private val M = implicitly[MonadPlus[F]]
-    private val F = implicitly[Foldable[F]]
+  private case class Exists[A, B, F[_]](ab: Extractor[A, B])
+    (implicit val M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]) extends Extractor[F[A], F[B]] {
 
     def unapply(fa: F[A]): Option[F[B]] = {
       val result = M.bind(fa)(a => optionToF(ab(a)))
 
       (!F.empty(result) || F.empty(fa)).option(result)
     }
+
+    override def describe: String = "Exists[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
@@ -271,5 +272,6 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def forall[F[_]](implicit M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]): Extractor[F[A], F[B]] =
     Extractor.ForAll[A, B, F](this)
 
-  def exists[F[_]: MonadPlus: Foldable]: Extractor[F[A], F[B]] = Extractor.Exists[A, B, F](this)
+  def exists[F[_]](implicit M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]): Extractor[F[A], F[B]] =
+    Extractor.Exists[A, B, F](this)
 }
