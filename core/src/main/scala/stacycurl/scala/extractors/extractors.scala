@@ -37,7 +37,7 @@ object Extractor {
 
   class FromCapturer[A] {
     def apply[B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f, Option(name))
-    def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = Partial[A, B](pf)
+    def pf[B](pf: PartialFunction[A, B], name: String = null): Extractor[A, B] = Partial[A, B](pf, Option(name))
   }
 
   class MapCapturer[A] {
@@ -93,9 +93,11 @@ object Extractor {
   // Construct 'Function' with an appropriate function, I prefer to keep them for now to retain
   // the structure of the extractor, it's not different from an ordinary function but I plan to
   // add lables & toStrings to extractors
-  private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
+  private case class Partial[A, B](override val pf: PartialFunction[A, B], name: Option[String])
+    extends Extractor[A, B] {
+
     def unapply(a: A): Option[B] = pf.lift(a)
-    def describe: String = "Partial"
+    def describe: String = parenthesise("Partial", name)
   }
 
   private case class FromMap[A, B](map: Map[A, B]) extends Extractor[A, B] {

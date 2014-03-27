@@ -26,6 +26,8 @@ class ExtractorsTests {
     }
 
     assertEquals("Partial", ContainsBar.describe)
+    assertEquals("Partial(id)", Extractor.from[String].pf({ case s => s }, "id").describe)
+
     assertEquals(List("bar", "bard", "unmatched"), List("bar", "bard", "other").map {
       case ContainsBar(s) => s
       case _              => "unmatched"
