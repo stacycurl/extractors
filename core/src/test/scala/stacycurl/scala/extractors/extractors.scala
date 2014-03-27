@@ -274,4 +274,13 @@ class ExtractorsTests {
 
     assertSame(Mapped.pf, Extractor.from[Int].pf(Mapped.pf).pf)
   }
+
+  @Test def point {
+    val Point = Extractor.point[String, Int](Some(1))
+
+    assertEquals("Point(Some(1))", Point.describe)
+    assertEquals(List(1), List("blah").map {
+      case Point(i) => i
+    })
+  }
 }

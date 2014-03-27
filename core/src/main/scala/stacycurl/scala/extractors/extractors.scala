@@ -7,6 +7,7 @@ import scalaz.syntax.std.boolean._
 
 
 object Extractor {
+  def point[A, B](b: Option[B]): Extractor[A, B] = Point[A, B](b)
   def from[A] = new FromCapturer[A]
   def map[A]  = new MapCapturer[A]
   def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = FromMap[K, V](entries.toMap)
@@ -166,6 +167,7 @@ object Extractor {
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = b
+    override def describe: String = s"Point($b)"
   }
 
   private class Id[A] extends Extractor[A, A] {
