@@ -230,6 +230,7 @@ class ExtractorsTests {
     val ContainsFoo = Extractor.string.contains("foo")
     val AllContainsFoo = ContainsFoo.forall[List]
 
+    assertEquals("ForAll[List](Contains(foo))", AllContainsFoo.describe)
     assertEquals(List(true, true, true, false, false),
       List(List("foo"), List("food", "foo"), Nil, List("bar"), List("foo", "bar")).map {
         case AllContainsFoo(_) => true

@@ -1,5 +1,6 @@
 package stacycurl.scala.extractors
 
+import scala.reflect.ClassTag
 import scalaz._
 import scalaz.std.list._
 import scalaz.syntax.std.boolean._
@@ -204,15 +205,16 @@ object Extractor {
     override def describe: String = s"LiftToOption(${ab.describe})"
   }
 
-  private case class ForAll[A, B, F[_]: MonadPlus: Foldable](ab: Extractor[A, B]) extends Extractor[F[A], F[B]] {
-    private val M = implicitly[MonadPlus[F]]
-    private val F = implicitly[Foldable[F]]
+  private case class ForAll[A, B, F[_]](ab: Extractor[A, B])
+    (implicit val M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]) extends Extractor[F[A], F[B]] {
 
     def unapply(fa: F[A]): Option[F[B]] = {
       val result = M.bind(fa)(a => optionToF(ab(a)))
 
       (F.length(result) == F.length(fa)).option(result)
     }
+
+    override def describe: String = "ForAll[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
@@ -265,6 +267,9 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def zip[C, D](f: Extractor[C, D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
   def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
   def liftToOption: Extractor[Option[A], B] = Extractor.LiftToOption[A, B](this)
-  def forall[F[_]: MonadPlus: Foldable]: Extractor[F[A], F[B]] = Extractor.ForAll[A, B, F](this)
+
+  def forall[F[_]](implicit M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]): Extractor[F[A], F[B]] =
+    Extractor.ForAll[A, B, F](this)
+
   def exists[F[_]: MonadPlus: Foldable]: Extractor[F[A], F[B]] = Extractor.Exists[A, B, F](this)
 }
