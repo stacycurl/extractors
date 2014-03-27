@@ -298,6 +298,9 @@ class ExtractorsTests {
     val Apply = Extractor.apply[String, Int]((s: String) => s.contains("foo").option(3))
 
     assertEquals("Apply", Apply.describe)
+    assertEquals("Apply(name)", Extractor.apply[String, String](Some(_), "name").describe)
+    assertEquals("Apply(name)", Extractor.from[String](Some(_), "name").describe)
+
     assertEquals(List(3, 0), List("foo", "bar").map {
       case Apply(i) => i
       case _        => 0

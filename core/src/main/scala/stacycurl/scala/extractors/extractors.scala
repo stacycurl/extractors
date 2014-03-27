@@ -7,7 +7,7 @@ import scalaz.syntax.std.boolean._
 
 
 object Extractor {
-  def apply[A, B](f: A => Option[B]): Extractor[A, B] = Apply[A, B](f)
+  def apply[A, B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f, Option(name))
   def id[A]: Extractor[A, A] = new Id[A]
   def point[A, B](b: Option[B]): Extractor[A, B] = Point[A, B](b)
   def from[A] = new FromCapturer[A]
@@ -36,7 +36,7 @@ object Extractor {
   }
 
   class FromCapturer[A] {
-    def apply[B](f: A => Option[B]): Extractor[A, B] = Apply[A, B](f)
+    def apply[B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f, Option(name))
     def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = Partial[A, B](pf)
   }
 
@@ -79,9 +79,9 @@ object Extractor {
       def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
     }
 
-  private case class Apply[A, B](f: A => Option[B]) extends Extractor[A, B] {
+  private case class Apply[A, B](f: A => Option[B], name: Option[String] = None) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
-    def describe: String = "Apply"
+    def describe: String = parenthesise("Apply", name)
   }
 
   private case class Function[A, B](f: A => B) extends Extractor[A, B] {
@@ -241,6 +241,9 @@ object Extractor {
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
+
+  private def parenthesise(prefix: String, name: Option[String]): String =
+    name.fold(prefix)(n => s"$prefix($n)")
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
