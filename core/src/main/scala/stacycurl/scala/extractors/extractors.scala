@@ -111,6 +111,7 @@ object Extractor {
 
   private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
+    override def describe: String = "FlatMap"
   }
 
   private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A) extends Extractor[C, B] {

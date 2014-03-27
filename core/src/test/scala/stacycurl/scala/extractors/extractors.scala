@@ -42,6 +42,21 @@ class ExtractorsTests {
     })
   }
 
+  @Test def canFlatMapOverResult {
+    val Contains = Extractor.string.contains("foo").map(_ => "bar").orElse(
+      Extractor.string.contains("oof").map(_ => "rab"))
+
+    val ContainsBoth = Contains.flatMap(value => Extractor.string.contains(value))
+
+    assertEquals("FlatMap", ContainsBoth.describe)
+    assertEquals(List(true, true, false, false, false, false),
+      List("foobar", "raboof", "foo", "bar", "rab", "oof").map {
+        case ContainsBoth(_) => true
+        case _               => false
+      }
+    )
+  }
+
   @Test def canContramapOverInput {
     val ContainsBar = Extractor.from[String].pf {
       case s if s.contains("bar") => s
