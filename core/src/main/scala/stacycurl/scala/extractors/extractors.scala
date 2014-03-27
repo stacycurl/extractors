@@ -81,6 +81,7 @@ object Extractor {
 
   private case class Function[A, B](f: A => B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = Some(f(a))
+    override def describe = "Function"
   }
 
   // These classes are unnecessary as Extractor.{map, contramap, compose, andThen, orElse} could
@@ -98,6 +99,7 @@ object Extractor {
 
   private case class When[A](p: A => Boolean) extends Extractor[A, A] {
     def unapply(a: A): Option[A] = p(a).option(a)
+    override def describe: String = "When"
   }
 
   private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
@@ -116,6 +118,7 @@ object Extractor {
 
   private case class Compose[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
+    override def describe: String = s"Compose(${ab.describe}, ${ca.describe})"
   }
 
   // The first element to be added, to the _head_ of the list, requires appending to the end
