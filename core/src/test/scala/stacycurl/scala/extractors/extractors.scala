@@ -11,8 +11,6 @@ import scalaz.syntax.std.boolean._
 
 class ExtractorsTests {
   @Test def canCreateFromFunction {
-    val ContainsFoo = Extractor.string.contains("foo")
-
     assertEquals("Contains(foo)", ContainsFoo.describe)
     assertEquals(List("foo", "food", "unmatched"), List("foo", "food", "other").map {
       case ContainsFoo(s) => s
@@ -21,10 +19,6 @@ class ExtractorsTests {
   }
 
   @Test def canCreateFromPartialFunction {
-    val ContainsBar = Extractor.from[String].pf {
-      case s if s.contains("bar") => s
-    }
-
     assertEquals("Partial", ContainsBar.describe)
     assertEquals("Partial(id)", Extractor.from[String].pf({ case s => s }, "id").describe)
 
@@ -35,7 +29,6 @@ class ExtractorsTests {
   }
 
   @Test def canMapOverResult {
-    val ContainsFoo = Extractor.string.contains("foo")
     val ReversedResult: Extractor[String, String] = ContainsFoo.map(_.reverse)
 
     assertEquals("Contains(foo).map", ReversedResult.describe)
@@ -48,9 +41,7 @@ class ExtractorsTests {
   }
 
   @Test def canFlatMapOverResult {
-    val Contains = Extractor.string.contains("foo").map(_ => "bar").orElse(
-      Extractor.string.contains("oof").map(_ => "rab"))
-
+    val Contains     = ContainsFoo.map(_ => "bar").orElse(Extractor.string.contains("oof").map(_ => "rab"))
     val ContainsBoth = Contains.flatMap(value => Extractor.string.contains(value))
 
     assertEquals("FlatMap", ContainsBoth.describe)
@@ -65,10 +56,6 @@ class ExtractorsTests {
   }
 
   @Test def canContramapOverInput {
-    val ContainsBar = Extractor.from[String].pf {
-      case s if s.contains("bar") => s
-    }
-
     val ReversedInput = ContainsBar.contramap[String](_.reverse)
 
     assertEquals("Partial.contramap", ReversedInput.describe)
@@ -81,8 +68,6 @@ class ExtractorsTests {
   }
 
   @Test def canCompose {
-    val Length: Extractor[String, Int] = Extractor.map(_.length)
-    val IsThree: Extractor[Int, Int] = Extractor.when[Int](_ == 3)
     val LengthThree = IsThree.compose(Length)
 
     assertEquals("Function", Length.describe)
@@ -95,8 +80,6 @@ class ExtractorsTests {
   }
 
   @Test def canComposeWithAndThen {
-    val Length  = Extractor.map[String](_.length)
-    val IsThree = Extractor.when[Int](_ == 3)
     val LengthThree = Length.andThen(IsThree)
 
     assertEquals("AndThen(Function, When)", LengthThree.describe)
@@ -118,10 +101,9 @@ class ExtractorsTests {
 
   @Test def canComposeWithAlternative {
     val ContainsFooOrBar = Extractor.never[String, String].orElse(
-      Extractor.string.contains("foo").map(_ => "foo")).orElse(
-        Extractor.string.contains("bar").map(_ => "bar"))
+      ContainsFoo.map(_ => "foo")).orElse(ContainsBar.map(_ => "bar"))
 
-    assertEquals("First(Never, Contains(foo).map, Contains(bar).map)", ContainsFooOrBar.describe)
+    assertEquals("First(Never, Contains(foo).map, Partial.map)", ContainsFooOrBar.describe)
     assertEquals(List("foo", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
       case ContainsFooOrBar(sub) => sub
       case _                   => "unmatched"
@@ -130,10 +112,9 @@ class ExtractorsTests {
 
   @Test def canComposeWithLast {
     val ContainsFooOrBar = Extractor.never[String, String].last(
-      Extractor.string.contains("foo").map(_ => "foo")).last(
-        Extractor.string.contains("bar").map(_ => "bar"))
+      ContainsFoo.map(_ => "foo")).last( ContainsBar.map(_ => "bar"))
 
-    assertEquals("Last(Never, Contains(foo).map, Contains(bar).map)", ContainsFooOrBar.describe)
+    assertEquals("Last(Never, Contains(foo).map, Partial.map)", ContainsFooOrBar.describe)
     assertEquals(List("bar", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
       case ContainsFooOrBar(sub) => sub
       case _                     => "unmatched"
@@ -143,10 +124,9 @@ class ExtractorsTests {
   @Test def canComposeWithAppend {
     implicit val firstString: Semigroup[String] = Semigroup.firstSemigroup[String]
 
-    val ContainsFooOrBar = Extractor.string.contains("foo").map(_ => "foo").append(
-      Extractor.string.contains("bar").map(_ => "bar"))
+    val ContainsFooOrBar = ContainsFoo.map(_ => "foo").append(ContainsBar.map(_ => "bar"))
 
-    assertEquals("Append(Contains(foo).map, Contains(bar).map)", ContainsFooOrBar.describe)
+    assertEquals("Append(Contains(foo).map, Partial.map)", ContainsFooOrBar.describe)
     assertEquals(List("foo", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
       case ContainsFooOrBar(sub) => sub
       case _                     => "unmatched"
@@ -184,7 +164,7 @@ class ExtractorsTests {
   }
 
   @Test def canFilterResult {
-    val ContainsFoo = Extractor.string.contains("foo").filter(_.length > 3)
+    val ContainsFoo = this.ContainsFoo.filter(_.length > 3)
 
     assertEquals("Filter(Contains(foo))", ContainsFoo.describe)
     assertEquals(List("unknown", "food", "unknown"), List("foo", "food", "other").map {
@@ -194,7 +174,6 @@ class ExtractorsTests {
   }
 
   @Test def canZip {
-    val ContainsFoo  = Extractor.string.contains("foo")
     val GreaterThan3 = Extractor.when[Int](_ > 3)
     val FooGT3 = ContainsFoo.zip(GreaterThan3)
 
@@ -241,7 +220,6 @@ class ExtractorsTests {
   }
 
   @Test def liftToOption {
-    val ContainsFoo = Extractor.string.contains("foo")
     val OptionContainsFoo = ContainsFoo.liftToOption
 
     assertEquals("LiftToOption(Contains(foo))", OptionContainsFoo.describe)
@@ -252,7 +230,6 @@ class ExtractorsTests {
   }
 
   @Test def forall {
-    val ContainsFoo = Extractor.string.contains("foo")
     val AllContainsFoo = ContainsFoo.forall[List]
 
     assertEquals("ForAll[List](Contains(foo))", AllContainsFoo.describe)
@@ -265,7 +242,6 @@ class ExtractorsTests {
   }
 
   @Test def exists {
-    val ContainsFoo = Extractor.string.contains("foo")
     val ExistsContainsFoo = ContainsFoo.exists[List]
 
     assertEquals("Exists[List](Contains(foo))", ExistsContainsFoo.describe)
@@ -317,7 +293,6 @@ class ExtractorsTests {
   }
 
   @Test def first {
-    val ContainsFoo = Extractor.string.contains("foo")
     val FirstContainsFoo = ContainsFoo.arrFirst[Int]
 
     assertEquals("ArrFirst(Contains(foo))", FirstContainsFoo.describe)
@@ -326,4 +301,13 @@ class ExtractorsTests {
       case _                   => false
     })
   }
+
+  private lazy val ContainsFoo = Extractor.string.contains("foo")
+
+  private lazy val ContainsBar = Extractor.from[String].pf {
+    case s if s.contains("bar") => s
+  }
+
+  private lazy val Length: Extractor[String, Int] = Extractor.map(_.length)
+  private lazy val IsThree: Extractor[Int, Int] = Extractor.when[Int](_ == 3)
 }
