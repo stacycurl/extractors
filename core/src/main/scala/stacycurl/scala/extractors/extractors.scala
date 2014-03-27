@@ -102,6 +102,7 @@ object Extractor {
 
   private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(bc)
+    override def describe: String = ab.describe + ".map"
   }
 
   private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
