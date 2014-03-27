@@ -159,6 +159,7 @@ object Extractor {
 
   private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
+    override def describe: String = s"Filter(${ab.describe})"
   }
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
