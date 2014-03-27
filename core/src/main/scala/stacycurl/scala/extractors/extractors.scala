@@ -7,6 +7,7 @@ import scalaz.syntax.std.boolean._
 
 
 object Extractor {
+  def apply[A, B](f: A => Option[B]): Extractor[A, B] = Apply[A, B](f)
   def id[A]: Extractor[A, A] = new Id[A]
   def point[A, B](b: Option[B]): Extractor[A, B] = Point[A, B](b)
   def from[A] = new FromCapturer[A]
@@ -35,7 +36,7 @@ object Extractor {
   }
 
   class FromCapturer[A] {
-    def apply[B](f: A => Option[B]): Extractor[A, B] = OptFunction[A, B](f)
+    def apply[B](f: A => Option[B]): Extractor[A, B] = Apply[A, B](f)
     def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = Partial[A, B](pf)
   }
 
@@ -78,7 +79,7 @@ object Extractor {
       def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
     }
 
-  private case class OptFunction[A, B](f: A => Option[B]) extends Extractor[A, B] {
+  private case class Apply[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
   }
 
