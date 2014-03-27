@@ -219,6 +219,7 @@ class ExtractorsTests {
     val ContainsFoo = Extractor.string.contains("foo")
     val OptionContainsFoo = ContainsFoo.liftToOption
 
+    assertEquals("LiftToOption(Contains(foo))", OptionContainsFoo.describe)
     assertEquals(List(true, false, false), List(Some("foo"), Some("bar"), None).map {
       case OptionContainsFoo(_) => true
       case _                    => false
