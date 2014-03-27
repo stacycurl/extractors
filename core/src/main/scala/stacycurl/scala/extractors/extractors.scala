@@ -7,6 +7,7 @@ import scalaz.syntax.std.boolean._
 
 
 object Extractor {
+  def id[A]: Extractor[A, A] = new Id[A]
   def point[A, B](b: Option[B]): Extractor[A, B] = Point[A, B](b)
   def from[A] = new FromCapturer[A]
   def map[A]  = new MapCapturer[A]
@@ -172,6 +173,7 @@ object Extractor {
 
   private class Id[A] extends Extractor[A, A] {
     def unapply(a: A): Option[A] = Some(a)
+    override def describe: String = "Id"
   }
 
   private object Never extends Extractor[Nothing, Nothing] {

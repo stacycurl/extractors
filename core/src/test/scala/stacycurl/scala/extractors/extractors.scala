@@ -283,4 +283,13 @@ class ExtractorsTests {
       case Point(i) => i
     })
   }
+
+  @Test def id {
+    val Id = Extractor.id[Int]
+
+    assertEquals("Id", Id.describe)
+    assertEquals(List(1, 2), List(1, 2).map {
+      case Id(i) => i
+    })
+  }
 }
