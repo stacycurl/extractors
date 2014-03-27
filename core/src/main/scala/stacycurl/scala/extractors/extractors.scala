@@ -111,6 +111,7 @@ object Extractor {
 
   private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ab(ca(c))
+    override def describe: String = ab.describe + ".contramap"
   }
 
   private case class Compose[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {

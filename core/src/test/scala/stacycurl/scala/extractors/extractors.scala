@@ -49,6 +49,7 @@ class ExtractorsTests {
 
     val ReversedInput = ContainsBar.contramap[String](_.reverse)
 
+    assertEquals("Partial.contramap", ReversedInput.describe)
     assertEquals(List("bar", "bard", "unmatched"), List("rab", "drab", "other").map {
       case ReversedInput(s) => s
       case _                => "unmatched"
