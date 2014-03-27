@@ -81,6 +81,7 @@ object Extractor {
 
   private case class Apply[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
+    override def describe: String = "Apply"
   }
 
   private case class Function[A, B](f: A => B) extends Extractor[A, B] {
