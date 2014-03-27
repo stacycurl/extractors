@@ -85,6 +85,7 @@ class ExtractorsTests {
   @Test def canCreateFromMap {
     val FromMap = Extractor.fromMap(Map("foo" -> 1, "bar" -> 2))
 
+    assertEquals("FromMap(size = 2)", FromMap.describe)
     assertEquals(List(1, 2, -1), List("foo", "bar", "other").map {
       case FromMap(result) => result
       case _               => -1

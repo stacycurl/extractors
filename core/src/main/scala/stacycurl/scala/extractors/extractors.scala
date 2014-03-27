@@ -95,6 +95,7 @@ object Extractor {
 
   private case class FromMap[A, B](map: Map[A, B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = map.get(a)
+    override def describe: String = s"FromMap(size = ${map.size})"
   }
 
   private case class When[A](p: A => Boolean) extends Extractor[A, A] {
