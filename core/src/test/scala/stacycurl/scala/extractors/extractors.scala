@@ -75,6 +75,7 @@ class ExtractorsTests {
     val IsThree = Extractor.when[Int](_ == 3)
     val LengthThree = Length.andThen(IsThree)
 
+    assertEquals("AndThen(Function, When)", LengthThree.describe)
     assertEquals(List(true, true, false), List("foo", "bar", "other").map {
       case LengthThree(_) => true
       case _              => false

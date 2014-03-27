@@ -121,6 +121,11 @@ object Extractor {
     override def describe: String = s"Compose(${ab.describe}, ${ca.describe})"
   }
 
+  private case class AndThen[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
+    def unapply(c: C): Option[B] = ca(c).flatMap(ab)
+    override def describe: String = s"AndThen(${ca.describe}, ${ab.describe})"
+  }
+
   // The first element to be added, to the _head_ of the list, requires appending to the end
   private case class First[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
@@ -231,7 +236,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contramapped[A, B, C](this, f)
 
   def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
-  def andThen[C](ebc: Extractor[B, C]): Extractor[A, C] = Extractor.Compose[B, C, A](ebc, this)
+  def andThen[C](ebc: Extractor[B, C]): Extractor[A, C] = Extractor.AndThen[B, C, A](ebc, this)
 
   def orElse(alternative: Extractor[A, B]): Extractor[A, B] = first(alternative)
   def first(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
