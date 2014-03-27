@@ -31,7 +31,7 @@ object Extractor {
 
     private case class Contains(sub: String) extends Extractor[String, String] {
       def unapply(s: String): Option[String] = s.contains(sub).option(s)
-      override def describe: String = s"Contains($sub)"
+      def describe: String = s"Contains($sub)"
     }
   }
 
@@ -81,12 +81,12 @@ object Extractor {
 
   private case class Apply[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
-    override def describe: String = "Apply"
+    def describe: String = "Apply"
   }
 
   private case class Function[A, B](f: A => B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = Some(f(a))
-    override def describe = "Function"
+    def describe = "Function"
   }
 
   // These classes are unnecessary as Extractor.{map, contramap, compose, andThen, orElse} could
@@ -95,48 +95,48 @@ object Extractor {
   // add lables & toStrings to extractors
   private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = pf.lift(a)
-    override def describe: String = "Partial"
+    def describe: String = "Partial"
   }
 
   private case class FromMap[A, B](map: Map[A, B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = map.get(a)
-    override def describe: String = s"FromMap(size = ${map.size})"
+    def describe: String = s"FromMap(size = ${map.size})"
   }
 
   private case class When[A](p: A => Boolean) extends Extractor[A, A] {
     def unapply(a: A): Option[A] = p(a).option(a)
-    override def describe: String = "When"
+    def describe: String = "When"
   }
 
   private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(bc)
-    override def describe: String = ab.describe + ".map"
+    def describe: String = ab.describe + ".map"
   }
 
   private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
-    override def describe: String = "FlatMap"
+    def describe: String = "FlatMap"
   }
 
   private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ab(ca(c))
-    override def describe: String = ab.describe + ".contramap"
+    def describe: String = ab.describe + ".contramap"
   }
 
   private case class Compose[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
-    override def describe: String = s"Compose(${ab.describe}, ${ca.describe})"
+    def describe: String = s"Compose(${ab.describe}, ${ca.describe})"
   }
 
   private case class AndThen[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
-    override def describe: String = s"AndThen(${ca.describe}, ${ab.describe})"
+    def describe: String = s"AndThen(${ca.describe}, ${ab.describe})"
   }
 
   // The first element to be added, to the _head_ of the list, requires appending to the end
   private case class First[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
-    override def describe: String = "First(%s)".format(alternatives.map(_.describe).mkString(", "))
+    def describe: String = "First(%s)".format(alternatives.map(_.describe).mkString(", "))
 
     override def first(alternative: Extractor[A, B]): Extractor[A, B] = copy(alternatives :+ alternative)
   }
@@ -144,74 +144,74 @@ object Extractor {
   // The last element to be added, to the _head_ of the list, i.e. stored as the first, bit odd.
   private case class Last[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
-    override def describe: String = "Last(%s)".format(alternatives.reverse.map(_.describe).mkString(", "))
+    def describe: String = "Last(%s)".format(alternatives.reverse.map(_.describe).mkString(", "))
 
     override def last(alternative: Extractor[A, B]): Extractor[A, B] = copy(alternative :: alternatives)
   }
 
   private case class Append[A, B](lhs: Extractor[A, B], rhs: Extractor[A, B], S: Semigroup[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = scalaz.std.option.optionMonoid[B](S).append(lhs(a), rhs(a))
-    override def describe: String = s"Append(${lhs.describe}, ${rhs.describe})"
+    def describe: String = s"Append(${lhs.describe}, ${rhs.describe})"
   }
 
   private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
-    override def describe: String = s"OrThrow(${ab.describe})"
+    def describe: String = s"OrThrow(${ab.describe})"
   }
 
   private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
-    override def describe: String = s"GetOrElse(${ab.describe}, $alternative)"
+    def describe: String = s"GetOrElse(${ab.describe}, $alternative)"
   }
 
   private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
-    override def describe: String = s"Filter(${ab.describe})"
+    def describe: String = s"Filter(${ab.describe})"
   }
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = b
-    override def describe: String = s"Point($b)"
+    def describe: String = s"Point($b)"
   }
 
   private class Id[A] extends Extractor[A, A] {
     def unapply(a: A): Option[A] = Some(a)
-    override def describe: String = "Id"
+    def describe: String = "Id"
   }
 
   private object Never extends Extractor[Nothing, Nothing] {
     def unapply(n: Nothing): Option[Nothing] = None
-    override def describe: String = "Never"
+    def describe: String = "Never"
   }
 
   private case class ArrFirst[A, B, C](ab: Extractor[A, B]) extends Extractor[(A, C), (B, C)] {
     def unapply(ac: (A, C)): Option[(B, C)] = ab(ac._1).map(b => (b, ac._2))
-    override def describe: String = s"ArrFirst(${ab.describe})"
+    def describe: String = s"ArrFirst(${ab.describe})"
   }
 
   private case class Unzip[A, B, F[_]](unzip: scalaz.Unzip[F]) extends Extractor[F[(A, B)], (F[A], F[B])] {
     def unapply(fab: F[(A, B)]): Option[(F[A], F[B])] = Some(unzip.unzip(fab))
-    override def describe: String = "Unzip"
+    def describe: String = "Unzip"
   }
 
   private case class Zip[A, B, C, D](ab: Extractor[A, B], cd: Extractor[C, D]) extends Extractor[(A, C), (B, D)] {
     def unapply(ac: (A, C)): Option[(B, D)] = for { b <- ab(ac._1); d <- cd(ac._2) } yield (b, d)
-    override def describe: String = s"Zip(${ab.describe}, ${cd.describe})"
+    def describe: String = s"Zip(${ab.describe}, ${cd.describe})"
   }
 
   private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
-    override def describe: String = s"Lens(${ab.describe})"
+    def describe: String = s"Lens(${ab.describe})"
   }
 
   private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
     def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(rpf.lift)
-    override def describe: String = s"Regex($regex)"
+    def describe: String = s"Regex($regex)"
   }
 
   private case class LiftToOption[A, B](ab: Extractor[A, B]) extends Extractor[Option[A], B] {
     def unapply(oa: Option[A]): Option[B] = oa.flatMap(ab)
-    override def describe: String = s"LiftToOption(${ab.describe})"
+    def describe: String = s"LiftToOption(${ab.describe})"
   }
 
   private case class ForAll[A, B, F[_]](ab: Extractor[A, B])
@@ -223,7 +223,7 @@ object Extractor {
       (F.length(result) == F.length(fa)).option(result)
     }
 
-    override def describe: String = "ForAll[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
+    def describe: String = "ForAll[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
@@ -237,7 +237,7 @@ object Extractor {
       (!F.empty(result) || F.empty(fa)).option(result)
     }
 
-    override def describe: String = "Exists[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
+    def describe: String = "Exists[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
@@ -246,7 +246,7 @@ object Extractor {
 trait Extractor[A, B] extends (A => Option[B]) {
   def apply(a: A): Option[B] = unapply(a)
   def unapply(a: A): Option[B]
-  def describe: String = ""
+  def describe: String
 
   def fn: (A => Option[B]) = this
 
