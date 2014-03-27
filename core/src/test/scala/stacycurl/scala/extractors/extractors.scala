@@ -206,6 +206,7 @@ class ExtractorsTests {
       case List(first, second) => (first, second)
     }
 
+    assertEquals("Regex((.*):(.*))", Matches.describe)
     assertEquals(List(("abc", "def"), ("", "def"), ("abc", ""), ("?", "?")),
       List("abc:def", ":def", "abc:", "blah").map {
         case Matches(first, second) => (first, second)

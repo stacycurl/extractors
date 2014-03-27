@@ -196,6 +196,7 @@ object Extractor {
 
   private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
     def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(rpf.lift)
+    override def describe: String = s"Regex($regex)"
   }
 
   private case class LiftOption[A, B](ab: Extractor[A, B]) extends Extractor[Option[A], B] {
