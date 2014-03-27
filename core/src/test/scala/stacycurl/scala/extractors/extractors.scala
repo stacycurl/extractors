@@ -310,6 +310,10 @@ class ExtractorsTests {
     })
   }
 
+  @Test def canName {
+    assertEquals("Function(Length)", Length.named("Length").describe)
+  }
+
   private lazy val ContainsFoo = Extractor.string.contains("foo")
 
   private lazy val ContainsBar = Extractor.from[String].pf {

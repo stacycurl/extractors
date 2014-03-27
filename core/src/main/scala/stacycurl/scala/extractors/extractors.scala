@@ -89,10 +89,13 @@ object Extractor {
     def describe = "Function"
   }
 
-  // These classes are unnecessary as Extractor.{map, contramap, compose, andThen, orElse} could
-  // Construct 'Function' with an appropriate function, I prefer to keep them for now to retain
-  // the structure of the extractor, it's not different from an ordinary function but I plan to
-  // add lables & toStrings to extractors
+  private case class Named[A, B](ab: Extractor[A, B], name: String) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = ab.unapply(a)
+    def describe = s"${ab.describe}($name)"
+  }
+
+  // These classes exist to help make debugging easier, I will introduce a 'fuse' method to collapse them
+  // down to 'Apply'
   private case class Partial[A, B](override val pf: PartialFunction[A, B], name: Option[String])
     extends Extractor[A, B] {
 
@@ -256,6 +259,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def apply(a: A): Option[B] = unapply(a)
   def unapply(a: A): Option[B]
   def describe: String
+  def named(name: String): Extractor[A, B] = Extractor.Named[A, B](this, name)
 
   def fn: (A => Option[B]) = this
 
