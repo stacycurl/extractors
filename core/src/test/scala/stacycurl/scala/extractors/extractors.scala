@@ -109,6 +109,7 @@ class ExtractorsTests {
       Extractor.string.contains("foo").map(_ => "foo")).last(
         Extractor.string.contains("bar").map(_ => "bar"))
 
+    assertEquals("Last(Never, Contains(foo).map, Contains(bar).map)", ContainsFooOrBar.describe)
     assertEquals(List("bar", "foo", "bar", "unmatched"), List("foobar", "foo", "bar", "other").map {
       case ContainsFooOrBar(sub) => sub
       case _                     => "unmatched"

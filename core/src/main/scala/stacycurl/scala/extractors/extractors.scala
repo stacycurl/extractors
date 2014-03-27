@@ -138,6 +138,7 @@ object Extractor {
   // The last element to be added, to the _head_ of the list, i.e. stored as the first, bit odd.
   private case class Last[A, B](alternatives: List[Extractor[A, B]]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = alternatives.toStream.flatMap(alternative => alternative(a)).headOption
+    override def describe: String = "Last(%s)".format(alternatives.reverse.map(_.describe).mkString(", "))
 
     override def last(alternative: Extractor[A, B]): Extractor[A, B] = copy(alternative :: alternatives)
   }
