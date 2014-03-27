@@ -184,6 +184,7 @@ class ExtractorsTests {
     val TupleOfLists: Extractor[List[(Int, String)], (List[Int], List[String])] =
       Extractor.unzip[Int, String, List]
 
+    assertEquals("Unzip", TupleOfLists.describe)
     assertEquals((List(1, 2), List("one", "two")), List((1, "one"), (2, "two")) match {
       case TupleOfLists(ints, strings) => (ints, strings)
     })

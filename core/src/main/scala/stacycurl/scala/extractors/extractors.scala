@@ -181,6 +181,7 @@ object Extractor {
 
   private case class Unzip[A, B, F[_]](unzip: scalaz.Unzip[F]) extends Extractor[F[(A, B)], (F[A], F[B])] {
     def unapply(fab: F[(A, B)]): Option[(F[A], F[B])] = Some(unzip.unzip(fab))
+    override def describe: String = "Unzip"
   }
 
   private case class Zip[A, B, C, D](ab: Extractor[A, B], cd: Extractor[C, D]) extends Extractor[(A, C), (B, D)] {
