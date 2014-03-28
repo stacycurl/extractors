@@ -173,9 +173,9 @@ object Extractor {
     def describe: String = s"${ab.describe}.getOrElse($alternative)"
   }
 
-  private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
+  private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean, name: Option[String]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
-    def describe: String = s"${ab.describe}.filter"
+    def describe: String = parenthesise(s"${ab.describe}.filter", name)
   }
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
@@ -289,7 +289,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def append(alternative: Extractor[A, B])(implicit S: Semigroup[B]): Extractor[A, B] =
     Extractor.Append[A, B](this, alternative, S)
 
-  def filter(p: B => Boolean): Extractor[A, B] = Extractor.Filter[A, B](this, p)
+  def filter(p: B => Boolean, name: String = null): Extractor[A, B] = Extractor.Filter[A, B](this, p, Option(name))
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: Extractor[C, D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
   def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)

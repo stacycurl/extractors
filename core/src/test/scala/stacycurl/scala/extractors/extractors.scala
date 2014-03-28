@@ -176,6 +176,8 @@ class ExtractorsTests {
     val ContainsFoo = this.ContainsFoo.filter(_.length > 3)
 
     assertEquals("Contains(foo).filter", ContainsFoo.describe)
+    assertEquals("Contains(foo).filter(name)", this.ContainsFoo.filter(_.length > 3, "name").describe)
+
     assertEquals(List("unknown", "food", "unknown"), List("foo", "food", "other").map {
       case ContainsFoo(f) => f
       case _              => "unknown"
