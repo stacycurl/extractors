@@ -208,9 +208,11 @@ object Extractor {
     def describe: String = s"${ab.describe}.zip(${cd.describe})"
   }
 
-  private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
+  private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C], name: Option[String])
+    extends Extractor[A, C] {
+
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
-    def describe: String = s"${ab.describe}.lens"
+    def describe: String = parenthesise(s"${ab.describe}.lens", name)
   }
 
   private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
@@ -292,7 +294,10 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def filter(p: B => Boolean, name: String = null): Extractor[A, B] = Extractor.Filter[A, B](this, p, Option(name))
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: Extractor[C, D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
-  def lens[C](lens: Lens[B, C]): Extractor[A, C] = Extractor.Lens[A, B, C](this, lens)
+
+  def lens[C](lens: Lens[B, C], name: String = null): Extractor[A, C] =
+    Extractor.Lens[A, B, C](this, lens, Option(name))
+
   def liftToOption: Extractor[Option[A], B] = Extractor.LiftToOption[A, B](this)
 
   def forall[F[_]](implicit M: MonadPlus[F], F: Foldable[F], C: ClassTag[F[_]]): Extractor[F[A], F[B]] =

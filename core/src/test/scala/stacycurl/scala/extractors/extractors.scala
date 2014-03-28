@@ -210,6 +210,7 @@ class ExtractorsTests {
     val FirstIs1 = Is1One.lens(Lens.firstLens[Int, String])
 
     assertEquals("When.lens", FirstIs1.describe)
+    assertEquals("When.lens(first)", Is1One.lens(Lens.firstLens[Int, String], "first").describe)
     assertEquals(List(true, false), List((1, "one"), (2, "two")).map {
       case FirstIs1(_) => true
       case _           => false
