@@ -156,17 +156,23 @@ class ExtractorsTests {
   }
 
   @Test def canChooseExceptionToFailWith {
-    case class Unknown(message: String) extends Exception(message)
-    val ToInt = Extractor.fromMap("foo" -> 1).orThrow(Unknown("unknown"))
+    case class Unknown(message: String) extends Exception(message) {
+      override def toString = message
+    }
 
-    assertEquals("FromMap(size = 1).orThrow", ToInt.describe)
+    val ToInt = Extractor.fromMap("foo" -> 1).orThrow(Unknown("unknown"))
+    val DoubleMap = Extractor.fromMap("foo" -> 1.0)
+    val ToDouble = DoubleMap.orThrow((s: String) => Unknown("unknown: " + s))
+
+    assertEquals("FromMap(size = 1).orThrow(unknown)", ToInt.describe)
+    assertEquals("FromMap(size = 1).orThrow", ToDouble.describe)
+    assertEquals("FromMap(size = 1).orThrow(unknown)",
+      DoubleMap.orThrow((s: String) => Unknown("u"), "unknown").describe)
+
     assertEquals(List(Success(1), Failure(Unknown("unknown"))), List("foo", "other").map(item => {
       Try(item match { case ToInt(i) => i })
     }))
 
-    val ToDouble = Extractor.fromMap("foo" -> 1.0).orThrow((s: String) => Unknown("unknown: " + s))
-
-    assertEquals("FromMap(size = 1).orThrow", ToDouble.describe)
     assertEquals(List(Success(1.0), Failure(Unknown("unknown: other"))), List("foo", "other").map(item => {
       Try(item match { case ToDouble(d) => d })
     }))

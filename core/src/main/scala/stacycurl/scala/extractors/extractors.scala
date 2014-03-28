@@ -163,9 +163,11 @@ object Extractor {
     def describe: String = s"${lhs.describe}.append(${rhs.describe})"
   }
 
-  private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {
+  private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception, name: Option[String])
+    extends Extractor[A, B] {
+
     def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
-    def describe: String = s"${ab.describe}.orThrow"
+    def describe: String = parenthesise(s"${ab.describe}.orThrow", name)
   }
 
   private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
@@ -284,8 +286,11 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def orElse(alternative: Extractor[A, B]): Extractor[A, B] = first(alternative)
   def first(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
   def last(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
-  def orThrow(exception: Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, _ => exception)
-  def orThrow(f: A => Exception): Extractor[A, B] = Extractor.OrThrow[A, B](this, f)
+
+  def orThrow(exception: Exception): Extractor[A, B] =
+    Extractor.OrThrow[A, B](this, _ => exception, Some(exception.toString))
+
+  def orThrow(f: A => Exception, name: String = null): Extractor[A, B] = Extractor.OrThrow[A, B](this, f, Option(name))
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
 
   def append(alternative: Extractor[A, B])(implicit S: Semigroup[B]): Extractor[A, B] =
