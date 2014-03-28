@@ -41,7 +41,7 @@ object Extractor {
   }
 
   class MapCapturer[A] {
-    def apply[B](f: A => B): Extractor[A, B] = Function[A, B](f)
+    def apply[B](f: A => B, name: String = null): Extractor[A, B] = Function[A, B](f, Option(name))
   }
 
   object monoid {
@@ -67,7 +67,7 @@ object Extractor {
 
   implicit object extractorArrow extends Arrow[Extractor] {
     def id[A]: Extractor[A, A] = new Id[A]
-    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f)
+    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f, None)
     def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = ArrFirst[A, B, C](eab)
     def compose[A, B, C](ebc: Extractor[B, C], eab: Extractor[A, B]): Extractor[A, C] = ebc.compose(eab)
     override def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
@@ -84,9 +84,9 @@ object Extractor {
     def describe: String = parenthesise("Apply", name)
   }
 
-  private case class Function[A, B](f: A => B) extends Extractor[A, B] {
+  private case class Function[A, B](f: A => B, name: Option[String]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = Some(f(a))
-    def describe = "Function"
+    def describe = parenthesise("Function", name)
   }
 
   private case class Named[A, B](ab: Extractor[A, B], name: String) extends Extractor[A, B] {

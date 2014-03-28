@@ -68,6 +68,15 @@ class ExtractorsTests {
     })
   }
 
+  @Test def map {
+    assertEquals("Function", Length.describe)
+    assertEquals("Function(length)", Extractor.map[String](_.length, "length").describe)
+
+    assertEquals(List(1, 3), List("a", "foo").map {
+      case Length(i) => i
+    })
+  }
+
   @Test def when {
     assertEquals("When", IsThree.describe)
     assertEquals("When(== 3)", Extractor.when[Int](_ == 3, "== 3").describe)
