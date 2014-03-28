@@ -122,7 +122,7 @@ object Extractor {
     extends Extractor[A, C] {
 
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
-    def describe: String = parenthesise("FlatMap", name)
+    def describe: String = parenthesise(ab.describe + ".flatMap", name)
   }
 
   private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A, name: Option[String])
@@ -134,12 +134,12 @@ object Extractor {
 
   private case class Compose[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
-    def describe: String = s"Compose(${ab.describe}, ${ca.describe})"
+    def describe: String = s"${ab.describe}.compose(${ca.describe})"
   }
 
   private case class AndThen[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ca(c).flatMap(ab)
-    def describe: String = s"AndThen(${ca.describe}, ${ab.describe})"
+    def describe: String = s"${ca.describe}.andThen(${ab.describe})"
   }
 
   // The first element to be added, to the _head_ of the list, requires appending to the end
@@ -160,22 +160,22 @@ object Extractor {
 
   private case class Append[A, B](lhs: Extractor[A, B], rhs: Extractor[A, B], S: Semigroup[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = scalaz.std.option.optionMonoid[B](S).append(lhs(a), rhs(a))
-    def describe: String = s"Append(${lhs.describe}, ${rhs.describe})"
+    def describe: String = s"${lhs.describe}.append(${rhs.describe})"
   }
 
   private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
-    def describe: String = s"OrThrow(${ab.describe})"
+    def describe: String = s"${ab.describe}.orThrow"
   }
 
   private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(Some(alternative))
-    def describe: String = s"GetOrElse(${ab.describe}, $alternative)"
+    def describe: String = s"${ab.describe}.getOrElse($alternative)"
   }
 
   private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
-    def describe: String = s"Filter(${ab.describe})"
+    def describe: String = s"${ab.describe}.filter"
   }
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
@@ -205,12 +205,12 @@ object Extractor {
 
   private case class Zip[A, B, C, D](ab: Extractor[A, B], cd: Extractor[C, D]) extends Extractor[(A, C), (B, D)] {
     def unapply(ac: (A, C)): Option[(B, D)] = for { b <- ab(ac._1); d <- cd(ac._2) } yield (b, d)
-    def describe: String = s"Zip(${ab.describe}, ${cd.describe})"
+    def describe: String = s"${ab.describe}.zip(${cd.describe})"
   }
 
   private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
-    def describe: String = s"Lens(${ab.describe})"
+    def describe: String = s"${ab.describe}.lens"
   }
 
   private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
@@ -220,7 +220,7 @@ object Extractor {
 
   private case class LiftToOption[A, B](ab: Extractor[A, B]) extends Extractor[Option[A], B] {
     def unapply(oa: Option[A]): Option[B] = oa.flatMap(ab)
-    def describe: String = s"LiftToOption(${ab.describe})"
+    def describe: String = s"${ab.describe}.liftToOption"
   }
 
   private case class ForAll[A, B, F[_]](ab: Extractor[A, B])
@@ -232,7 +232,7 @@ object Extractor {
       (F.length(result) == F.length(fa)).option(result)
     }
 
-    def describe: String = "ForAll[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
+    def describe: String = "%s.forAll[%s]".format(ab.describe, C.runtimeClass.getSimpleName)
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
@@ -246,7 +246,7 @@ object Extractor {
       (!F.empty(result) || F.empty(fa)).option(result)
     }
 
-    def describe: String = "Exists[%s](%s)".format(C.runtimeClass.getSimpleName, ab.describe)
+    def describe: String = "%s.exists[%s]".format(ab.describe, C.runtimeClass.getSimpleName)
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
