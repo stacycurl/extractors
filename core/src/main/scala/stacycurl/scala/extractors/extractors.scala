@@ -122,6 +122,11 @@ object Extractor {
     def describe: String = ab.describe + ".map"
   }
 
+  private case class Collect[A, B, C](ab: Extractor[A, B], bc: PartialFunction[B, C]) extends Extractor[A, C] {
+    def unapply(a: A): Option[C] = ab(a).collect(bc)
+    def describe: String = ab.describe + ".collect"
+  }
+
   private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
     def describe: String = ab.describe + ".flatMap"
@@ -267,6 +272,9 @@ trait Extractor[A, B] extends (A => Option[B]) {
   }
 
   def map[C](f: B => C, name: String = null): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f).named(Option(name))
+
+  def collect[C](pf: PartialFunction[B, C], name: String = null): Extractor[A, C] =
+    Extractor.Collect[A, B, C](this, pf).named(Option(name))
 
   def flatMap[C](f: B => Extractor[A, C], name: String = null): Extractor[A, C] =
     Extractor.FlatMapped[A, B, C](this, f).named(Option(name))

@@ -40,6 +40,20 @@ class ExtractorsTests {
     })
   }
 
+  @Test def canCollectOverResult {
+    val LengthGT3 = Length.collect[String] {
+      case l if l > 3 => "> 3"
+    }
+
+    assertEquals("Function.collect", LengthGT3.describe)
+    assertEquals("Function.collect(name)", Length.collect[Int]({ case i => i }, "name").describe)
+
+    assertEquals(List("> 3", "unmatched"), List("abcd", "abc").map {
+      case LengthGT3(message) => message
+      case _                  => "unmatched"
+    })
+  }
+
   @Test def canFlatMapOverResult {
     val Contains     = ContainsFoo.map(_ => "bar").orElse(Extractor.string.contains("oof").map(_ => "rab"))
     val ContainsBoth = Contains.flatMap(value => Extractor.string.contains(value))
