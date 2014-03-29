@@ -6,28 +6,32 @@ import scalaz.syntax.std.boolean._
 
 object Extractor {
   def from[A] = new FromCapturer[A]
-  def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = fromMap[K, V](entries.toMap)
-  def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = from[K](map.get)
   def map[A]  = new MapCapturer[A]
-  def when[A](f: A => Boolean): Extractor[A, A] = from[A]((a: A) => f(a).option(a))
-  def unzip[A, B, F[_]](implicit U: Unzip[F]): Extractor[F[(A, B)], (F[A], F[B])] = map[F[(A, B)]](U.unzip)
+  def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = FromMap[K, V](entries.toMap)
+  def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = FromMap[K, V](map)
+  def when[A](p: A => Boolean): Extractor[A, A] = When[A](p)
+  def unzip[A, B, F[_]](implicit U: scalaz.Unzip[F]): Extractor[F[(A, B)], (F[A], F[B])] = Unzip[A, B, F](U)
 
   object string {
-    def contains(sub: String): Extractor[String, String] = when[String](_.contains(sub))
+    def contains(sub: String): Extractor[String, String] = Contains(sub)
     def regex[A](regex: String): RegexCapturer[A] = new RegexCapturer[A](regex)
 
     class RegexCapturer[A](regex: String) {
       def apply(pf: PartialFunction[List[String], A]): Extractor[String, A] = Extractor.Regex[A](regex, pf)
     }
+
+    private case class Contains(sub: String) extends Extractor[String, String] {
+      def unapply(s: String): Option[String] = s.contains(sub).option(s)
+    }
   }
 
   class FromCapturer[A] {
-    def apply[B](f: A => Option[B]): Extractor[A, B] = Function[A, B](f)
+    def apply[B](f: A => Option[B]): Extractor[A, B] = OptFunction[A, B](f)
     def pf[B](pf: PartialFunction[A, B]): Extractor[A, B] = Partial[A, B](pf)
   }
 
   class MapCapturer[A] {
-    def apply[B](f: A => B): Extractor[A, B] = Function[A, B]((a: A) => Option(f(a)))
+    def apply[B](f: A => B): Extractor[A, B] = Function[A, B](f)
   }
 
   implicit def extractorMonad[A]: Monad[({ type E[B] = Extractor[A, B] })#E] =
@@ -44,30 +48,42 @@ object Extractor {
 
   implicit object extractorArrow extends Arrow[Extractor] {
     def id[A]: Extractor[A, A] = new Id[A]
-    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B]((a: A) => Some(f(a)))
+    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f)
     def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = First[A, B, C](eab)
     def compose[A, B, C](ebc: Extractor[B, C], eab: Extractor[A, B]): Extractor[A, C] = ebc.compose(eab)
     override def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
     override def mapsnd[A, B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
   }
 
-  implicit def extractorUnzip[A]: Unzip[({ type E[B] = Extractor[A, B] })#E] =
-    new Unzip[({ type E[B] = Extractor[A, B] })#E] {
+  implicit def extractorUnzip[A]: scalaz.Unzip[({ type E[B] = Extractor[A, B] })#E] =
+    new scalaz.Unzip[({ type E[B] = Extractor[A, B] })#E] {
       def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
     }
 
-  private case class Function[A, B](f: A => Option[B]) extends Extractor[A, B] {
-    def unapply(a: A): Option[B] = f(a)
+  private case class Function[A, B](f: A => B) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = Some(f(a))
   }
 
-  private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
-    def unapply(a: A): Option[B] = pf.lift(a)
+  private case class OptFunction[A, B](f: A => Option[B]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = f(a)
   }
 
   // These classes are unnecessary as Extractor.{map, contramap, compose, andThen, orElse} could
   // Construct 'Function' with an appropriate function, I prefer to keep them for now to retain
   // the structure of the extractor, it's not different from an ordinary function but I plan to
   // add lables & toStrings to extractors
+  private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = pf.lift(a)
+  }
+
+  private case class FromMap[A, B](map: Map[A, B]) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = map.get(a)
+  }
+
+  private case class When[A](p: A => Boolean) extends Extractor[A, A] {
+    def unapply(a: A): Option[A] = p(a).option(a)
+  }
+
   private case class Mapped[A, B, C](ab: A => Option[B], bc: B => C) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(bc)
   }
@@ -112,6 +128,10 @@ object Extractor {
 
   private case class First[A, B, C](ab: A => Option[B]) extends Extractor[(A, C), (B, C)] {
     def unapply(ac: (A, C)): Option[(B, C)] = ab(ac._1).map(b => (b, ac._2))
+  }
+
+  private case class Unzip[A, B, F[_]](unzip: scalaz.Unzip[F]) extends Extractor[F[(A, B)], (F[A], F[B])] {
+    def unapply(fab: F[(A, B)]): Option[(F[A], F[B])] = Some(unzip.unzip(fab))
   }
 
   private case class Zip[A, B, C, D](ab: A => Option[B], cd: C => Option[D]) extends Extractor[(A, C), (B, D)] {
