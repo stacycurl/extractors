@@ -51,6 +51,8 @@ class ExtractorsTests {
     val ContainsBoth = Contains.flatMap(value => Extractor.string.contains(value))
 
     assertEquals("FlatMap", ContainsBoth.describe)
+    assertEquals("FlatMap(name)", Extractor.never[Int, Int].flatMap(_ => Extractor.never[Int, Int], "name").describe)
+
     assertEquals(List(true, true, false, false, false, false),
       List("foobar", "raboof", "foo", "bar", "rab", "oof").map {
         case ContainsBoth(_) => true

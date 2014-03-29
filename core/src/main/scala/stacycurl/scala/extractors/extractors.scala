@@ -115,9 +115,11 @@ object Extractor {
     def describe: String = ab.describe + ".map"
   }
 
-  private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
+  private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C], name: Option[String])
+    extends Extractor[A, C] {
+
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
-    def describe: String = "FlatMap"
+    def describe: String = parenthesise("FlatMap", name)
   }
 
   private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A) extends Extractor[C, B] {
@@ -261,7 +263,10 @@ trait Extractor[A, B] extends (A => Option[B]) {
   }
 
   def map[C](f: B => C): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f)
-  def flatMap[C](f: B => Extractor[A, C]): Extractor[A, C] = Extractor.FlatMapped[A, B, C](this, f)
+
+  def flatMap[C](f: B => Extractor[A, C], name: String = null): Extractor[A, C] =
+    Extractor.FlatMapped[A, B, C](this, f, Option(name))
+
   def contramap[C](f: C => A): Extractor[C, B] = Extractor.Contramapped[A, B, C](this, f)
 
   def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
