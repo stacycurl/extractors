@@ -1,6 +1,6 @@
 Todo
 - fusion
-- use Named for all nameable operations ?
+- not
 
 Done
 + pf

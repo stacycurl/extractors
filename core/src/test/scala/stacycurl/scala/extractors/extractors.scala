@@ -87,6 +87,18 @@ class ExtractorsTests {
     })
   }
 
+  @Test def unless {
+    val NotThree = Extractor.unless[Int](_ == 3)
+
+    assertEquals("Unless", NotThree.describe)
+    assertEquals("Unless(== 3)", Extractor.unless[Int](_ == 3, "== 3").describe)
+
+    assertEquals(List(false, true), List(3, 4).map {
+      case NotThree(_) => true
+      case _           => false
+    })
+  }
+
   @Test def canCompose {
     val LengthThree = IsThree.compose(Length)
 

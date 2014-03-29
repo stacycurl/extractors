@@ -15,6 +15,7 @@ object Extractor {
   def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = FromMap[K, V](entries.toMap)
   def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = FromMap[K, V](map)
   def when[A](p: A => Boolean, name: String = null): Extractor[A, A] = When[A](p).named(Option(name))
+  def unless[A](p: A => Boolean, name: String = null): Extractor[A, A] = Unless[A](p).named(Option(name))
   def unzip[A, B, F[_]](implicit U: scalaz.Unzip[F]): Extractor[F[(A, B)], (F[A], F[B])] = Unzip[A, B, F](U)
   def orElse[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = first[A, B](alternatives: _*)
   def first[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = First[A, B](alternatives.toList)
@@ -109,6 +110,11 @@ object Extractor {
   private case class When[A](p: A => Boolean) extends Extractor[A, A] {
     def unapply(a: A): Option[A] = p(a).option(a)
     def describe: String = "When"
+  }
+
+  private case class Unless[A](p: A => Boolean) extends Extractor[A, A] {
+    def unapply(a: A): Option[A] = (!p(a)).option(a)
+    def describe: String = "Unless"
   }
 
   private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
