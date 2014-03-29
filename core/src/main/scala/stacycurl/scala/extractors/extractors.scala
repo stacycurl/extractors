@@ -7,14 +7,14 @@ import scalaz.syntax.std.boolean._
 
 
 object Extractor {
-  def apply[A, B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f, Option(name))
+  def apply[A, B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f).named(Option(name))
   def id[A]: Extractor[A, A] = new Id[A]
   def point[A, B](b: Option[B]): Extractor[A, B] = Point[A, B](b)
   def from[A] = new FromCapturer[A]
   def map[A]  = new MapCapturer[A]
   def fromMap[K, V](entries: (K, V)*): Extractor[K, V] = FromMap[K, V](entries.toMap)
   def fromMap[K, V](map: Map[K, V]): Extractor[K, V] = FromMap[K, V](map)
-  def when[A](p: A => Boolean, name: String = null): Extractor[A, A] = When[A](p, Option(name))
+  def when[A](p: A => Boolean, name: String = null): Extractor[A, A] = When[A](p).named(Option(name))
   def unzip[A, B, F[_]](implicit U: scalaz.Unzip[F]): Extractor[F[(A, B)], (F[A], F[B])] = Unzip[A, B, F](U)
   def orElse[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = first[A, B](alternatives: _*)
   def first[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = First[A, B](alternatives.toList)
@@ -36,12 +36,12 @@ object Extractor {
   }
 
   class FromCapturer[A] {
-    def apply[B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f, Option(name))
-    def pf[B](pf: PartialFunction[A, B], name: String = null): Extractor[A, B] = Partial[A, B](pf, Option(name))
+    def apply[B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f).named(Option(name))
+    def pf[B](pf: PartialFunction[A, B], name: String = null): Extractor[A, B] = Partial[A, B](pf).named(Option(name))
   }
 
   class MapCapturer[A] {
-    def apply[B](f: A => B, name: String = null): Extractor[A, B] = Function[A, B](f, Option(name))
+    def apply[B](f: A => B, name: String = null): Extractor[A, B] = Function[A, B](f).named(Option(name))
   }
 
   object monoid {
@@ -67,7 +67,7 @@ object Extractor {
 
   implicit object extractorArrow extends Arrow[Extractor] {
     def id[A]: Extractor[A, A] = new Id[A]
-    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f, None)
+    def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f)
     def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = ArrFirst[A, B, C](eab)
     def compose[A, B, C](ebc: Extractor[B, C], eab: Extractor[A, B]): Extractor[A, C] = ebc.compose(eab)
     override def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
@@ -79,14 +79,14 @@ object Extractor {
       def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
     }
 
-  private case class Apply[A, B](f: A => Option[B], name: Option[String] = None) extends Extractor[A, B] {
+  private case class Apply[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
-    def describe: String = parenthesise("Apply", name)
+    def describe: String = "Apply"
   }
 
-  private case class Function[A, B](f: A => B, name: Option[String]) extends Extractor[A, B] {
+  private case class Function[A, B](f: A => B) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = Some(f(a))
-    def describe = parenthesise("Function", name)
+    def describe = "Function"
   }
 
   private case class Named[A, B](ab: Extractor[A, B], name: String) extends Extractor[A, B] {
@@ -96,11 +96,9 @@ object Extractor {
 
   // These classes exist to help make debugging easier, I will introduce a 'fuse' method to collapse them
   // down to 'Apply'
-  private case class Partial[A, B](override val pf: PartialFunction[A, B], name: Option[String])
-    extends Extractor[A, B] {
-
+  private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = pf.lift(a)
-    def describe: String = parenthesise("Partial", name)
+    def describe: String = "Partial"
   }
 
   private case class FromMap[A, B](map: Map[A, B]) extends Extractor[A, B] {
@@ -108,28 +106,24 @@ object Extractor {
     def describe: String = s"FromMap(size = ${map.size})"
   }
 
-  private case class When[A](p: A => Boolean, name: Option[String]) extends Extractor[A, A] {
+  private case class When[A](p: A => Boolean) extends Extractor[A, A] {
     def unapply(a: A): Option[A] = p(a).option(a)
-    def describe: String = parenthesise("When", name)
+    def describe: String = "When"
   }
 
-  private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C, name: Option[String]) extends Extractor[A, C] {
+  private case class Mapped[A, B, C](ab: Extractor[A, B], bc: B => C) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(bc)
-    def describe: String = parenthesise(ab.describe + ".map", name)
+    def describe: String = ab.describe + ".map"
   }
 
-  private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C], name: Option[String])
-    extends Extractor[A, C] {
-
+  private case class FlatMapped[A, B, C](ab: Extractor[A, B], bac: B => Extractor[A, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).flatMap(bac(_)(a))
-    def describe: String = parenthesise(ab.describe + ".flatMap", name)
+    def describe: String = ab.describe + ".flatMap"
   }
 
-  private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A, name: Option[String])
-    extends Extractor[C, B] {
-
+  private case class Contramapped[A, B, C](ab: Extractor[A, B], ca: C => A) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = ab(ca(c))
-    def describe: String = parenthesise(ab.describe + ".contramap", name)
+    def describe: String = ab.describe + ".contramap"
   }
 
   private case class Compose[A, B, C](ab: Extractor[A, B], ca: Extractor[C, A]) extends Extractor[C, B] {
@@ -163,11 +157,9 @@ object Extractor {
     def describe: String = s"${lhs.describe}.append(${rhs.describe})"
   }
 
-  private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception, name: Option[String])
-    extends Extractor[A, B] {
-
+  private case class OrThrow[A, B](ab: Extractor[A, B], exception: A => Exception) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).orElse(throw exception(a))
-    def describe: String = parenthesise(s"${ab.describe}.orThrow", name)
+    def describe: String = s"${ab.describe}.orThrow"
   }
 
   private case class GetOrElse[A, B](ab: Extractor[A, B], alternative: B) extends Extractor[A, B] {
@@ -175,9 +167,9 @@ object Extractor {
     def describe: String = s"${ab.describe}.getOrElse($alternative)"
   }
 
-  private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean, name: Option[String]) extends Extractor[A, B] {
+  private case class Filter[A, B](ab: Extractor[A, B], p: B => Boolean) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = ab(a).filter(p)
-    def describe: String = parenthesise(s"${ab.describe}.filter", name)
+    def describe: String = s"${ab.describe}.filter"
   }
 
   private case class Point[A, B](b: Option[B]) extends Extractor[A, B] {
@@ -210,11 +202,9 @@ object Extractor {
     def describe: String = s"${ab.describe}.zip(${cd.describe})"
   }
 
-  private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C], name: Option[String])
-    extends Extractor[A, C] {
-
+  private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
-    def describe: String = parenthesise(s"${ab.describe}.lens", name)
+    def describe: String = s"${ab.describe}.lens"
   }
 
   private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
@@ -254,15 +244,13 @@ object Extractor {
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
-
-  private def parenthesise(prefix: String, name: Option[String]): String =
-    name.fold(prefix)(n => s"$prefix($n)")
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
   def apply(a: A): Option[B] = unapply(a)
   def unapply(a: A): Option[B]
   def describe: String
+  def named(name: Option[String]): Extractor[A, B] = name.fold(this)(named)
   def named(name: String): Extractor[A, B] = Extractor.Named[A, B](this, name)
 
   def fn: (A => Option[B]) = this
@@ -272,13 +260,13 @@ trait Extractor[A, B] extends (A => Option[B]) {
     def apply(a: A): B = unapply(a).get
   }
 
-  def map[C](f: B => C, name: String = null): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f, Option(name))
+  def map[C](f: B => C, name: String = null): Extractor[A, C] = Extractor.Mapped[A, B, C](this, f).named(Option(name))
 
   def flatMap[C](f: B => Extractor[A, C], name: String = null): Extractor[A, C] =
-    Extractor.FlatMapped[A, B, C](this, f, Option(name))
+    Extractor.FlatMapped[A, B, C](this, f).named(Option(name))
 
   def contramap[C](f: C => A, name: String = null): Extractor[C, B] =
-    Extractor.Contramapped[A, B, C](this, f, Option(name))
+    Extractor.Contramapped[A, B, C](this, f).named(Option(name))
 
   def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
   def andThen[C](ebc: Extractor[B, C]): Extractor[A, C] = Extractor.AndThen[B, C, A](ebc, this)
@@ -288,20 +276,22 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def last(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
 
   def orThrow(exception: Exception): Extractor[A, B] =
-    Extractor.OrThrow[A, B](this, _ => exception, Some(exception.toString))
+    Extractor.OrThrow[A, B](this, _ => exception).named(exception.toString)
 
-  def orThrow(f: A => Exception, name: String = null): Extractor[A, B] = Extractor.OrThrow[A, B](this, f, Option(name))
+  def orThrow(f: A => Exception, name: String = null): Extractor[A, B] =
+    Extractor.OrThrow[A, B](this, f).named(Option(name))
+
   def getOrElse(alternative: B): Extractor[A, B] = Extractor.GetOrElse[A, B](this, alternative)
 
   def append(alternative: Extractor[A, B])(implicit S: Semigroup[B]): Extractor[A, B] =
     Extractor.Append[A, B](this, alternative, S)
 
-  def filter(p: B => Boolean, name: String = null): Extractor[A, B] = Extractor.Filter[A, B](this, p, Option(name))
+  def filter(p: B => Boolean, name: String = null): Extractor[A, B] = Extractor.Filter[A, B](this, p).named(Option(name))
   def unzip[C, D](implicit ev: B =:= (C, D)): (Extractor[A, C], Extractor[A, D]) = (map(_._1), map(_._2))
   def zip[C, D](f: Extractor[C, D]): Extractor[(A, C), (B, D)] = Extractor.Zip[A, B, C, D](this, f)
 
   def lens[C](lens: Lens[B, C], name: String = null): Extractor[A, C] =
-    Extractor.Lens[A, B, C](this, lens, Option(name))
+    Extractor.Lens[A, B, C](this, lens).named(Option(name))
 
   def liftToOption: Extractor[Option[A], B] = Extractor.LiftToOption[A, B](this)
 
