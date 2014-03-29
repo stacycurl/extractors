@@ -27,12 +27,17 @@ object Extractor {
     def regex[A](regex: String): RegexCapturer[A] = new RegexCapturer[A](regex)
 
     class RegexCapturer[A](regex: String) {
-      def apply(pf: PartialFunction[List[String], A]): Extractor[String, A] = Extractor.Regex[A](regex, pf)
+      def apply(pf: PartialFunction[List[String], A]): Extractor[String, A] = Regex[A](regex, pf)
     }
 
     private case class Contains(sub: String) extends Extractor[String, String] {
       def unapply(s: String): Option[String] = s.contains(sub).option(s)
       def describe: String = s"Contains($sub)"
+    }
+
+    private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
+      def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(rpf.lift)
+      def describe: String = s"Regex($regex)"
     }
   }
 
@@ -56,7 +61,7 @@ object Extractor {
 
   implicit def extractorMonad[A]: Monad[({ type E[B] = Extractor[A, B] })#E] =
     new Monad[({ type E[B] = Extractor[A, B] })#E] {
-      def point[B](b: => B): Extractor[A, B] = Extractor.Point[A, B](Some(b))
+      def point[B](b: => B): Extractor[A, B] = Extractor.point[A, B](Some(b))
       override def map[B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
       def bind[B, C](eab: Extractor[A, B])(fbc: B => Extractor[A, C]): Extractor[A, C] = eab.flatMap(fbc)
     }
@@ -69,7 +74,8 @@ object Extractor {
   implicit object extractorArrow extends Arrow[Extractor] {
     def id[A]: Extractor[A, A] = new Id[A]
     def arr[A, B](f: A => B): Extractor[A, B] = Function[A, B](f)
-    def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = ArrFirst[A, B, C](eab)
+    def first[A, B, C](eab: Extractor[A, B]): Extractor[(A, C), (B, C)] = eab.first[C]
+    override def second[A, B, C](eab: Extractor[A, B]): Extractor[(C, A), (C, B)] = eab.second[C]
     def compose[A, B, C](ebc: Extractor[B, C], eab: Extractor[A, B]): Extractor[A, C] = ebc.compose(eab)
     override def mapfst[A, B, C](eab: Extractor[A, B])(f: C => A): Extractor[C, B] = eab.contramap(f)
     override def mapsnd[A, B, C](eab: Extractor[A, B])(f: B => C): Extractor[A, C] = eab.map(f)
@@ -203,6 +209,11 @@ object Extractor {
     def describe: String = s"ArrFirst(${ab.describe})"
   }
 
+  private case class ArrSecond[A, B, C](ab: Extractor[A, B]) extends Extractor[(C, A), (C, B)] {
+    def unapply(ca: (C, A)): Option[(C, B)] = ab(ca._2).map(b => (ca._1, b))
+    def describe: String = s"ArrSecond(${ab.describe})"
+  }
+
   private case class Unzip[A, B, F[_]](unzip: scalaz.Unzip[F]) extends Extractor[F[(A, B)], (F[A], F[B])] {
     def unapply(fab: F[(A, B)]): Option[(F[A], F[B])] = Some(unzip.unzip(fab))
     def describe: String = "Unzip"
@@ -216,11 +227,6 @@ object Extractor {
   private case class Lens[A, B, C](ab: Extractor[A, B], lens: scalaz.Lens[B, C]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab(a).map(lens.get)
     def describe: String = s"${ab.describe}.lens"
-  }
-
-  private case class Regex[A](regex: String, rpf: PartialFunction[List[String], A]) extends Extractor[String, A] {
-    def unapply(s: String): Option[A] = regex.r.unapplySeq(s).flatMap(rpf.lift)
-    def describe: String = s"Regex($regex)"
   }
 
   private case class LiftToOption[A, B](ab: Extractor[A, B]) extends Extractor[Option[A], B] {
@@ -260,6 +266,7 @@ object Extractor {
 trait Extractor[A, B] extends (A => Option[B]) {
   def apply(a: A): Option[B] = unapply(a)
   def unapply(a: A): Option[B]
+  override def toString = describe
   def describe: String
   def named(name: Option[String]): Extractor[A, B] = name.fold(this)(named)
   def named(name: String): Extractor[A, B] = Extractor.Named[A, B](this, name)
@@ -288,6 +295,9 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def orElse(alternative: Extractor[A, B]): Extractor[A, B] = first(alternative)
   def first(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
   def last(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
+
+  def first[C]: Extractor[(A, C), (B, C)] = Extractor.ArrFirst[A, B, C](this)
+  def second[C]: Extractor[(C, A), (C, B)] = Extractor.ArrSecond[A, B, C](this)
 
   def orThrow(exception: Exception): Extractor[A, B] =
     Extractor.OrThrow[A, B](this, _ => exception).named(exception.toString)
