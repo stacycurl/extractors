@@ -2,7 +2,7 @@ package stacycurl.scala.extractors
 
 import org.junit.Test
 import scala.util._
-import scalaz.{Lens, Monoid, Semigroup}
+import scalaz.{Equal, Lens, Monoid, Semigroup}
 
 import org.junit.Assert._
 import scalaz.std.list._
@@ -357,6 +357,18 @@ class ExtractorsTests {
 
   @Test def canName {
     assertEquals("Function(Length)", Length.named("Length").describe)
+  }
+
+  @Test def iterate {
+    val Sqrt = Extractor.iterate[Double, Double](
+      initial = squared => squared / 2.0,
+      step    = squared => guess => (guess + (squared / guess)) / 2.0,
+      done    = squared => guess => math.abs((guess * guess) - squared) <= 1e-9
+    )
+
+    assertEquals(List("2.0", "1.414"), List(4.0, 2.0).map {
+      case Sqrt(sqrt) => sqrt.toString.take(5)
+    })
   }
 
   private lazy val ContainsFoo = Extractor.string.contains("foo")

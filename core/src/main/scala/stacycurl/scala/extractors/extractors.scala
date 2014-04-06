@@ -22,6 +22,9 @@ object Extractor {
   def last[A, B](alternatives: Extractor[A, B]*): Extractor[A, B] = Last[A, B](alternatives.toList)
   def never[A, B]: Extractor[A, B] = Never.asInstanceOf[Extractor[A, B]]
 
+  def iterate[A, B](initial: A => B, step: A => B => B, done: A => B => Boolean): Extractor[A, B] =
+    Function[A, B](initial).iterate(step, done)
+
   object string {
     def contains(sub: String): Extractor[String, String] = Contains(sub)
     def regex[A](regex: String): RegexCapturer[A] = new RegexCapturer[A](regex)
@@ -261,6 +264,19 @@ object Extractor {
 
     private def optionToF[C](oc: Option[C]): F[C] = oc.fold(M.empty[C])(c => M.point[C](c))
   }
+
+  private case class Iterate[A, B](ab: Extractor[A, B], step: A => B => B, done: A => B => Boolean)
+    extends Extractor[A, B] {
+
+    def unapply(start: A): Option[B] = ab.unapply(start).flatMap(startB => {
+      val steps  = Stream.iterate(startB)(step(start))
+      val result = steps.dropWhile(step => !done(start)(step)).headOption
+
+      result
+    })
+
+    def describe: String = s"${ab.describe}.iterate"
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -326,4 +342,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
     Extractor.Exists[A, B, F](this)
 
   def arrFirst[C]: Extractor[(A, C), (B, C)] = Extractor.extractorArrow.first[A, B, C](this)
+
+  def iterate(step: A => B => B, done: A => B => Boolean): Extractor[A, B] =
+    Extractor.Iterate[A, B](this, step, done)
 }
