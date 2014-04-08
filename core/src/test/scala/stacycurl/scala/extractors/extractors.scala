@@ -1,6 +1,7 @@
 package stacycurl.scala.extractors
 
 import org.junit.Test
+import scala.collection.mutable.ListBuffer
 import scala.util._
 import scalaz.{Equal, Lens, Monoid, Semigroup}
 
@@ -369,6 +370,18 @@ class ExtractorsTests {
     assertEquals(List("2.0", "1.414"), List(4.0, 2.0).map {
       case Sqrt(sqrt) => sqrt.toString.take(5)
     })
+  }
+
+  @Test def tap {
+    val tapped = new ListBuffer[(String, Option[String])]
+    val TappedContainsFoo = ContainsFoo.tap(input => output => tapped += ((input, output)))
+
+    assertEquals(List("matched", "matched", "unmatched"), List("foo", "food", "bar").map {
+      case TappedContainsFoo(_) => "matched"
+      case _                    => "unmatched"
+    })
+
+    assertEquals(List(("foo", Some("foo")), ("food", Some("food")), ("bar", None)), tapped.toList)
   }
 
   private lazy val ContainsFoo = Extractor.string.contains("foo")

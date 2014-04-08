@@ -277,6 +277,18 @@ object Extractor {
 
     def describe: String = s"${ab.describe}.iterate"
   }
+
+  private case class Tap[A, B](ab: Extractor[A, B], action: A => Option[B] => Unit) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = {
+      val result = ab.unapply(a)
+
+      action(a)(result)
+
+      result
+    }
+
+    def describe: String = s"${ab.describe}.tap"
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -345,4 +357,6 @@ trait Extractor[A, B] extends (A => Option[B]) {
 
   def iterate(step: A => B => B, done: A => B => Boolean): Extractor[A, B] =
     Extractor.Iterate[A, B](this, step, done)
+
+  def tap(action: A => Option[B] => Unit): Extractor[A, B] = Extractor.Tap[A, B](this, action)
 }

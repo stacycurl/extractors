@@ -1,10 +1,10 @@
 Todo
 - fusion
 - not
-- tap
 - ast filtering (generalization of fusion)
 
 Done
++ tap
 + iterate
 + pf
 + exists
