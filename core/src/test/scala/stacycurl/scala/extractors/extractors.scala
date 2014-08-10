@@ -376,12 +376,23 @@ class ExtractorsTests {
     val tapped = new ListBuffer[(String, Option[String])]
     val TappedContainsFoo = ContainsFoo.tap(input => output => tapped += ((input, output)))
 
+    assertEquals("Contains(foo).tap", TappedContainsFoo.describe)
     assertEquals(List("matched", "matched", "unmatched"), List("foo", "food", "bar").map {
       case TappedContainsFoo(_) => "matched"
       case _                    => "unmatched"
     })
 
     assertEquals(List(("foo", Some("foo")), ("food", Some("food")), ("bar", None)), tapped.toList)
+  }
+
+  @Test def castIn {
+    val Matches: Extractor[Any, String] = ContainsFoo.castIn[Any]
+
+    assertEquals("Contains(foo).castIn[Any]", Matches.describe)
+    assertEquals(List("matched", "unmatched", "unmatched"), List("foo", "bar", 1).map {
+      case Matches(_) => "matched"
+      case _          => "unmatched"
+    })
   }
 
   private lazy val ContainsFoo = Extractor.string.contains("foo")
