@@ -299,6 +299,12 @@ object Extractor {
 
     def describe: String = s"${ab.describe}.castIn[${implicitly[ClassTag[C]]}]"
   }
+
+  private case class CastOut[A, B, C <: B : ClassTag](ab: Extractor[A, B]) extends Extractor[A, C] {
+    def unapply(a: A): Option[C] = ab.unapply(a).flatMap(implicitly[ClassTag[C]].unapply)
+
+    def describe: String = s"${ab.describe}.castOut[${implicitly[ClassTag[C]]}]"
+  }
 }
 
 trait Extractor[A, B] extends (A => Option[B]) {
@@ -374,4 +380,5 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def tap(action: A => Option[B] => Unit): Extractor[A, B] = Extractor.Tap[A, B](this, action)
 
   def castIn[C >: A](implicit ca: ClassTag[A], cc: ClassTag[C]): Extractor[C, B] = Extractor.CastIn[A, B, C](this)
+  def castOut[C <: B](implicit cc: ClassTag[C]): Extractor[A, C] = Extractor.CastOut[A, B, C](this)
 }

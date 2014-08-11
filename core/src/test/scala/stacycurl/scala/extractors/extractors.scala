@@ -399,12 +399,25 @@ class ExtractorsTests {
     })
   }
 
-  private lazy val ContainsFoo = Extractor.string.contains("foo")
+  @Test def castOut {
+    val Matches: Extractor[String, Success[String]] = ContainsFooT.castOut[Success[String]]
 
-  private lazy val ContainsBar = Extractor.from[String].pf {
-    case s if s.contains("bar") => s
+    assertEquals("ContainsT(foo).castOut[scala.util.Success]", Matches.describe)
+    assertEquals(List("matched", "unmatched", "matched"), List("foo", "bar", "food").map {
+      case Matches(_) => "matched"
+      case _          => "unmatched"
+    })
   }
 
-  private lazy val Length: Extractor[String, Int] = Extractor.map(_.length)
-  private lazy val IsThree: Extractor[Int, Int] = Extractor.when[Int](_ == 3)
+
+  private lazy val ContainsFoo = Extractor.string.contains("foo")
+  private lazy val ContainsBar = Extractor.from[String].pf { case s if s.contains("bar") => s }
+
+  private lazy val Length: Extractor[String, Int] = Extractor.map[String](_.length)
+  private lazy val IsThree: Extractor[Int, Int]   = Extractor.when[Int](_ == 3)
+
+  private lazy val ContainsFooT: Extractor[String, Try[String]] = (Extractor.from[String].pf {
+    case s if s.contains("foo") => Success[String](s): Try[String]
+    case other                  => Failure(new Exception(other)): Try[String]
+  }).described("ContainsT(foo)")
 }
