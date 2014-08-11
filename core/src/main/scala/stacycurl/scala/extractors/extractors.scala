@@ -104,6 +104,10 @@ object Extractor {
     def describe = s"${ab.describe}($name)"
   }
 
+  private case class Described[A, B](ab: Extractor[A, B], describe: String) extends Extractor[A, B] {
+    def unapply(a: A): Option[B] = ab.unapply(a)
+  }
+
   // These classes exist to help make debugging easier, I will introduce a 'fuse' method to collapse them
   // down to 'Apply'
   private case class Partial[A, B](override val pf: PartialFunction[A, B]) extends Extractor[A, B] {
@@ -304,6 +308,9 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def describe: String
   def named(name: Option[String]): Extractor[A, B] = name.fold(this)(named)
   def named(name: String): Extractor[A, B] = Extractor.Named[A, B](this, name)
+
+  def described(description: Option[String]): Extractor[A, B] = description.fold(this)(described)
+  def described(description: String): Extractor[A, B] = Extractor.Described[A, B](this, description)
 
   def fn: (A => Option[B]) = this
 

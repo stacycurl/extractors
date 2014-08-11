@@ -360,6 +360,10 @@ class ExtractorsTests {
     assertEquals("Function(Length)", Length.named("Length").describe)
   }
 
+  @Test def canDescribe {
+    assertEquals("Length", Length.described("Length").describe)
+  }
+
   @Test def iterate {
     val Sqrt = Extractor.iterate[Double, Double](
       initial = squared => squared / 2.0,
