@@ -409,6 +409,16 @@ class ExtractorsTests {
     })
   }
 
+  @Test def cast {
+    val Matches: Extractor[Any, Success[String]] = ContainsFooT.cast[Any, Success[String]]
+
+    assertEquals("ContainsT(foo).castIn[Any].castOut[scala.util.Success]", Matches.describe)
+    assertEquals(List("matched", "unmatched", "matched"), List("foo", "bar", "food").map {
+      case Matches(_) => "matched"
+      case _          => "unmatched"
+    })
+  }
+
 
   private lazy val ContainsFoo = Extractor.string.contains("foo")
   private lazy val ContainsBar = Extractor.from[String].pf { case s if s.contains("bar") => s }

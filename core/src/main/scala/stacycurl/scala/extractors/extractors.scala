@@ -294,13 +294,13 @@ object Extractor {
     def describe: String = s"${ab.describe}.tap"
   }
 
-  private case class CastIn[A: ClassTag, B, C >: A : ClassTag](ab: Extractor[A, B]) extends Extractor[C, B] {
+  private case class CastIn[A: ClassTag, B, C: ClassTag](ab: Extractor[A, B]) extends Extractor[C, B] {
     def unapply(c: C): Option[B] = implicitly[ClassTag[A]].unapply(c).flatMap(ab.unapply)
 
     def describe: String = s"${ab.describe}.castIn[${implicitly[ClassTag[C]]}]"
   }
 
-  private case class CastOut[A, B, C <: B : ClassTag](ab: Extractor[A, B]) extends Extractor[A, C] {
+  private case class CastOut[A, B, C: ClassTag](ab: Extractor[A, B]) extends Extractor[A, C] {
     def unapply(a: A): Option[C] = ab.unapply(a).flatMap(implicitly[ClassTag[C]].unapply)
 
     def describe: String = s"${ab.describe}.castOut[${implicitly[ClassTag[C]]}]"
@@ -379,6 +379,7 @@ trait Extractor[A, B] extends (A => Option[B]) {
 
   def tap(action: A => Option[B] => Unit): Extractor[A, B] = Extractor.Tap[A, B](this, action)
 
-  def castIn[C >: A](implicit ca: ClassTag[A], cc: ClassTag[C]): Extractor[C, B] = Extractor.CastIn[A, B, C](this)
-  def castOut[C <: B](implicit cc: ClassTag[C]): Extractor[A, C] = Extractor.CastOut[A, B, C](this)
+  def cast[C, D](implicit ca: ClassTag[A], cc: ClassTag[C], cd: ClassTag[D]): Extractor[C, D] = castIn[C].castOut[D]
+  def castIn[C](implicit ca: ClassTag[A], cc: ClassTag[C]): Extractor[C, B] = Extractor.CastIn[A, B, C](this)
+  def castOut[C](implicit cc: ClassTag[C]): Extractor[A, C] = Extractor.CastOut[A, B, C](this)
 }
