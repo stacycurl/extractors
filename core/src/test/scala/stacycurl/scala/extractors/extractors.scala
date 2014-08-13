@@ -391,16 +391,38 @@ class ExtractorsTests {
   }
 
   @Test def tap {
-    val tapped = new ListBuffer[(String, Option[String])]
-    val TappedContainsFoo = ContainsFoo.tap(input => output => tapped += ((input, output)))
+    val ContainsFooR = ContainsFoo.map(_.reverse)
+    type L = String => Option[String] => Unit
+    type R = (String => String => Unit, String => Unit)
 
-    assertEquals("Contains(foo).tap", TappedContainsFoo.describe)
-    assertEquals(List("matched", "matched", "unmatched"), List("foo", "food", "bar").map {
-      case TappedContainsFoo(_) => "matched"
-      case _                    => "unmatched"
-    })
+    def assertTapped(Tapped: Extractor[String, String]) {
+      assertEquals(s"${ContainsFooR.describe}.tap", Tapped.describe)
 
-    assertEquals(List(("foo", Some("foo")), ("food", Some("food")), ("bar", None)), tapped.toList)
+      assertEquals(List("matched", "matched", "unmatched"), List("foo", "food", "bar").map {
+        case Tapped(_) => "matched"
+        case _         => "unmatched"
+      })
+    }
+
+    val both = new ListBuffer[(String, Option[String])]
+    assertTapped(ContainsFooR.tap(i => o => both += ((i, o))))
+    assertEquals(List(("foo", Some("oof")), ("food", Some("doof")), ("bar", None)), both.toList)
+
+    both.clear()
+    assertTapped(ContainsFooR.tap(Left[L, R](i => o => both += ((i, o)))))
+    assertEquals(List(("foo", Some("oof")), ("food", Some("doof")), ("bar", None)), both.toList)
+
+
+    val sucesses = new ListBuffer[(String, String)]
+    val failures = new ListBuffer[String]
+    assertTapped(ContainsFooR.tap(i => s => sucesses += ((i, s)), f => failures += f))
+    assertEquals(List(("foo", "oof"), ("food", "doof")), sucesses.toList)
+    assertEquals(List("bar"), failures.toList)
+
+    sucesses.clear(); failures.clear()
+    assertTapped(ContainsFooR.tap(Right[L, R](i => s => sucesses += ((i, s)), f => failures += f)))
+    assertEquals(List(("foo", "oof"), ("food", "doof")), sucesses.toList)
+    assertEquals(List("bar"), failures.toList)
   }
 
   @Test def castIn {

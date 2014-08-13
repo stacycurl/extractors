@@ -310,11 +310,17 @@ object Extractor {
     def describe: String = s"${ab.describe}.iterate"
   }
 
-  private case class Tap[A, B](ab: Extractor[A, B], action: A => Option[B] => Unit) extends Extractor[A, B] {
+  private case class Tap[A, B](
+    ab: Extractor[A, B], action: Either[A => Option[B] => Unit, (A => B => Unit, A => Unit)]
+  ) extends Extractor[A, B] {
+
     def unapply(a: A): Option[B] = {
       val result = ab.unapply(a)
 
-      action(a)(result)
+      action match {
+        case Left(both)                => both(a)(result)
+        case Right((success, failure)) => result.fold(failure(a))(success(a))
+      }
 
       result
     }
@@ -407,7 +413,12 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def iterate(step: A => B => B, done: A => B => Boolean): Extractor[A, B] =
     Extractor.Iterate[A, B](this, step, done)
 
-  def tap(action: A => Option[B] => Unit): Extractor[A, B] = Extractor.Tap[A, B](this, action)
+  def tap(action: A => Option[B] => Unit): Extractor[A, B] = tap(Left(action))
+
+  def tap(success: A => B => Unit, failure: A => Unit): Extractor[A, B] = tap(Right(success, failure))
+
+  def tap(action: Either[A => Option[B] => Unit, (A => B => Unit, A => Unit)]): Extractor[A, B] =
+    Extractor.Tap[A, B](this, action)
 
   def cast[C, D](implicit ca: ClassTag[A], cc: ClassTag[C], cd: ClassTag[D]): Extractor[C, D] = castIn[C].castOut[D]
   def castIn[C](implicit ca: ClassTag[A], cc: ClassTag[C]): Extractor[C, B] = Extractor.CastIn[A, B, C](this)
