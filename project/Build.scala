@@ -42,7 +42,8 @@ object extractorsBuild extends Build {
           Seq(
             "org.scala-lang" % "scala-compiler" % sv,
             "com.novocode" % "junit-interface" % "0.7" % "test",
-            "org.scalaz" % "scalaz-core_2.10" % "7.1.0"
+            "org.scalaz" % "scalaz-core_2.10" % "7.1.0",
+            "com.chuusai" %% "shapeless" % "2.0.0"
         )},
 
         initialCommands in console := """import stacycurl.scala.extractors._""",

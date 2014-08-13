@@ -54,7 +54,7 @@ object Extractor {
   }
 
   object monoid {
-    object first   { implicit def extractorMonoid[A, B] = apply[A, B](_ orElse _)                           }
+    object first   { implicit def extractorMonoid[A: ClassTag, B] = apply[A, B](_ orElse _)                 }
     object last    { implicit def extractorMonoid[A, B] = apply[A, B](_ last _)                             }
     object append  { implicit def extractorMonoid[A, B](implicit S: Semigroup[B]) = apply[A, B](_ append _) }
 
@@ -88,6 +88,34 @@ object Extractor {
     new scalaz.Unzip[({ type E[B] = Extractor[A, B] })#E] {
       def unzip[B, C](ebc: Extractor[A, (B, C)]): (Extractor[A, B], Extractor[A, C]) = ebc.unzip
     }
+
+  trait OrElse[A, B, C, D] {
+    type In
+    type Out
+
+    def apply(ab: Extractor[A, B], cd: Extractor[C, D]): Extractor[In, Out]
+  }
+
+  object OrElse {
+    type Aux[A, B, C, D, In0, Out0] = OrElse[A, B, C, D] { type In = In0; type Out = Out0 }
+
+    implicit def sameTypeOrElse[A, B]: Aux[A, B, A, B, A, B] = new OrElse[A, B, A, B] {
+      type In = A
+      type Out = B
+
+      def apply(ab: Extractor[A, B], cd: Extractor[A, B]): Extractor[A, B] = ab.first(cd)
+    }
+
+    implicit def differentInputOrElse[A: ClassTag, B: ClassTag, Out0, AB: ClassTag](
+      implicit lub: shapeless.Lub[A, B, AB]
+    ): Aux[A, Out0, B, Out0, AB, Out0] = new OrElse[A, Out0, B, Out0] {
+      type In = AB
+      type Out = Out0
+
+      def apply(ao: Extractor[A, Out], bo: Extractor[B, Out]): Extractor[AB, Out] =
+        Extractor.First[AB, Out](List(ao.castIn[AB], bo.castIn[AB]))
+    }
+  }
 
   private case class Apply[A, B](f: A => Option[B]) extends Extractor[A, B] {
     def unapply(a: A): Option[B] = f(a)
@@ -339,7 +367,9 @@ trait Extractor[A, B] extends (A => Option[B]) {
   def compose[C](eca: Extractor[C, A]): Extractor[C, B] = Extractor.Compose[A, B, C](this, eca)
   def andThen[C](ebc: Extractor[B, C]): Extractor[A, C] = Extractor.AndThen[B, C, A](ebc, this)
 
-  def orElse(alternative: Extractor[A, B]): Extractor[A, B] = first(alternative)
+  def orElse[C, D](alternative: Extractor[C, D])(implicit orElse: Extractor.OrElse[A, B, C, D])
+    : Extractor[orElse.In, orElse.Out] = orElse(this, alternative)
+
   def first(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.First[A, B](List(this, alternative))
   def last(alternative: Extractor[A, B]): Extractor[A, B] = Extractor.Last[A, B](List(alternative, this))
 

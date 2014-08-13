@@ -178,6 +178,20 @@ class ExtractorsTests {
     })
   }
 
+  @Test def canComposeWithAlternativeWithDifferentInputType {
+    trait Result
+    case class Error(msg: String) extends Result
+    case class Fail(msg: String) extends Result
+    case class Ok(msg: String) extends Result
+
+    val Issue = Extractor(Error.unapply) orElse Extractor(Fail.unapply)
+
+    assertEquals(List("Issue: error", "Ok: ok", "Issue: fail"), List(Error("error"), Ok("ok"), Fail("fail")) map {
+      case Issue(issue) => "Issue: " + issue
+      case Ok(ok)       => "Ok: " + ok
+    })
+  }
+
   @Test def isFunction {
     assertEquals(List(Some("foo"), None), List("foo", "bar").map(Extractor.string.contains("foo")))
   }
