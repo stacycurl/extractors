@@ -455,6 +455,16 @@ class ExtractorsTests {
     })
   }
 
+  @Test def listInitLast {
+    val InitLast = Extractor.list.initLast[Int]
+
+    assertEquals("InitLast", InitLast.describe)
+    assertEquals(List(Some((List(1, 2), 3)), None), List(List(1, 2, 3), Nil).map {
+      case InitLast(init, last) => Some((init, last))
+      case _ => None
+    })
+  }
+
 
   private lazy val ContainsFoo = Extractor.string.contains("foo")
   private lazy val ContainsBar = Extractor.from[String].pf { case s if s.contains("bar") => s }

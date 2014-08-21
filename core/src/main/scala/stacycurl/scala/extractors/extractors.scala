@@ -44,6 +44,15 @@ object Extractor {
     }
   }
 
+  object list {
+    def initLast[A]: Extractor[List[A], (List[A], A)] = InitLast[A]
+
+    private case class InitLast[A]() extends Extractor[List[A], (List[A], A)] {
+      def unapply(l: List[A]): Option[(List[A], A)] = l.nonEmpty.option((l.init, l.last))
+      def describe: String = "InitLast"
+    }
+  }
+
   class FromCapturer[A] {
     def apply[B](f: A => Option[B], name: String = null): Extractor[A, B] = Apply[A, B](f).named(Option(name))
     def pf[B](pf: PartialFunction[A, B], name: String = null): Extractor[A, B] = Partial[A, B](pf).named(Option(name))
