@@ -1,4 +1,4 @@
-package stacycurl.scala.extractors
+package sjc.extractors
 
 import org.junit.Test
 import scala.collection.mutable.ListBuffer

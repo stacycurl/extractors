@@ -46,7 +46,7 @@ object extractorsBuild extends Build {
             "com.chuusai" %% "shapeless" % "2.0.0"
         )},
 
-        initialCommands in console := """import stacycurl.scala.extractors._""",
+        initialCommands in console := """import sjc.extractors._""",
 
         mappings in (Compile, packageSrc) <++=
           (sourceManaged in Compile, managedSources in Compile) map { (base, srcs) =>
@@ -110,7 +110,7 @@ object extractorsBuild extends Build {
 
   def commonSettings = Defaults.defaultSettings ++
     Seq(
-      organization        := "stacycurl.scala",
+      organization        := "com.github.stacycurl",
       scalaVersion        := "2.10.3",
       scalaBinaryVersion  := "2.10.3",
 

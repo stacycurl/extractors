@@ -1,4 +1,4 @@
-package stacycurl.scala.extractors
+package sjc.extractors
 
 import scala.reflect.ClassTag
 import scalaz._
