@@ -246,8 +246,8 @@ class ExtractorsTests {
 
     assertEquals("Contains(foo).zip(When)", FooGT3.describe)
     assertEquals(List(true, false, false, false), List(("foo", 4), ("foo", 0), ("bar", 4), ("bar", 0)).map {
-      case FooGT3(_) => true
-      case _         => false
+      case FooGT3(_, _) => true
+      case _            => false
     })
   }
 
@@ -365,8 +365,8 @@ class ExtractorsTests {
 
     assertEquals("ArrFirst(Contains(foo))", FirstContainsFoo.describe)
     assertEquals(List(true, false), List(("foo", 1), ("bar", 2)).map {
-      case FirstContainsFoo(_) => true
-      case _                   => false
+      case FirstContainsFoo(_, _) => true
+      case _                      => false
     })
   }
 
