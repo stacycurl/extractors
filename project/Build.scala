@@ -45,7 +45,7 @@ object extractorsBuild extends Build {
     // scalariformSettings ++  // uncomment to reset project formatting
     scalaStyleSettings ++ instrumentSettings ++ Seq(
       organization := "com.github.stacycurl",
-      scalaVersion := "2.11.2",
+      scalaVersion := "2.10.3",
       maxErrors := 1,
       parallelExecution in Test := true,
       scalacOptions       := Seq(
@@ -56,12 +56,14 @@ object extractorsBuild extends Build {
         "-deprecation",
         "-unchecked"
       ),
-      libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
-      libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.1.0",
-      libraryDependencies += "com.chuusai" %% "shapeless" % "2.0.0",
+      libraryDependencies += "com.novocode"   %  "junit-interface"                % "0.11"   % "test",
+      libraryDependencies += "org.scalacheck" %  "scalacheck_2.10"                % "1.11.5" % "test",
+      libraryDependencies += "org.scalaz"     %  "scalaz-scalacheck-binding_2.10" % "7.1.0"  % "test",
+      libraryDependencies += "org.scalaz"     %% "scalaz-core"      % "7.1.0",
+      libraryDependencies += "com.chuusai"    %  "shapeless_2.10.3" % "2.0.0",
       initialCommands in console := """import sjc.extractors._""",
       highlighting := true,
       failOnMinimumCoverage := true,
-      minimumCoverage := 83.83
+      minimumCoverage := 89.03
     )
 }

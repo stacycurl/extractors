@@ -1,11 +1,13 @@
 package sjc.extractors
 
 import org.junit.Test
+import org.scalacheck._
 import scala.collection.mutable.ListBuffer
 import scala.util._
 import scalaz.{Equal, Lens, Monoid, Semigroup}
 
 import org.junit.Assert._
+import scalaz.scalacheck.ScalazProperties._
 import scalaz.std.list._
 import scalaz.syntax.std.boolean._
 
@@ -476,4 +478,33 @@ class ExtractorsTests {
     case s if s.contains("foo") => Success[String](s): Try[String]
     case other                  => Failure(new Exception(other)): Try[String]
   }).described("ContainsT(foo)")
+}
+
+object ExtractorSpec extends Properties("Extractor") {
+  implicit val arbitraryIntExtractor: Arbitrary[Extractor[Int, Int]] = Arbitrary(Gen.oneOf(
+    Extractor.map[Int].apply(i => i * 2, "* 2"),
+    Extractor.map[Int].apply(i => i + 2, "+ 2"),
+    Extractor.map[Int].apply(i => i - 2, "- 2")
+  ))
+
+  implicit val arbitraryIntEndoExtractor: Arbitrary[Extractor[Int, Int => Int]] = Arbitrary {
+    Extractor.map[Int].apply[Int => Int](i => j => i * j)
+  }
+
+  implicit val equalIntExtracotr: Equal[Extractor[Int, Int]] =
+    Equal.equalBy[Extractor[Int, Int], Option[Int]](ei => ei.unapply(345))
+
+  implicit def equalOption[A]: Equal[Option[A]] = Equal.equalA[Option[A]]
+
+  implicit val semigroupInt: Semigroup[Int] = Semigroup.instance[Int](_ + _)
+
+
+  checkAll(monad.laws[({ type E[B] = Extractor[Int, B] })#E])
+  checkAll(contravariant.laws[({ type E[A] = Extractor[A, Int] })#E])
+
+  { import Extractor.monoid.last._;   checkAll(monoid.laws[Extractor[Int, Int]]) }
+  { import Extractor.monoid.append._; checkAll(monoid.laws[Extractor[Int, Int]]) }
+  { import Extractor.monoid.first._;  checkAll(monoid.laws[Extractor[Int, Int]]) }
+
+  private def checkAll(props: Properties): Unit = for ((name, prop) <- props.properties) property(name) = prop
 }
